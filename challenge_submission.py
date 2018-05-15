@@ -430,7 +430,7 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
 
 
-    return compiled_dag
+    return tmp_solution
 
 
     # ##layout
