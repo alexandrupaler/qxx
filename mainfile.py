@@ -14,7 +14,7 @@ from challenge_evaluation import qasm_to_dag_circuit, load_coupling, get_layout
 backend = 'local_qiskit_simulator'
 
 generateJSONFile = False
-computeScore = False
+computeScore = True
 
 gate_costs2 = {'id': 0, 'u1': 0, 'measure': 0, 'reset': 0, 'barrier': 0,
                   'u2': 1, 'u3': 1, 'U': 1,

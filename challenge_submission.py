@@ -36,6 +36,7 @@ Description of the algorithm :
 # Include any Python modules needed for your implementation here
 import networkx as nx
 import copy
+import math
 
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
@@ -364,6 +365,9 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     for gate in nodes_collection:
         op_orig = dag_circuit.multi_graph.node[gate]
         if op_orig["type"] not in ["op"]:
+
+            print("continue with", op_orig)
+
             continue
 
         op = translate_op_to_coupling_map(op_orig, current_positions)
@@ -385,17 +389,20 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
             if is_pair_in_coupling_map(qub1, qub2, coupling_map):
                 gates_to_insert += compute_cnot_gate_list(qub1, qub2, False)
-                print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
+                # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
             elif is_pair_in_coupling_map(qub2, qub1, coupling_map):
                 gates_to_insert += compute_cnot_gate_list(qub2, qub1, True)
-                print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
+                # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
             else:
-                print("do not add this", qub1, qub2)
+                # print("do not add this", qub1, qub2)
                 '''
                     qub 1 and qub2 are not a coupling_map edge
                     Compute a solution
                 '''
-                coupling_edge_idx = 0 #put heuristic here to select edge
+                coupling_edge_idx = heuristic_choose_coupling_edge_idx(qub1, qub2,
+                                                                       coupling_edges_list,
+                                                                       coupling_dist,
+                                                                       coupling)
 
                 route1, route2 = move_qubits_to_edge(qub1, qub2,
                                                      coupling_edges_list[coupling_edge_idx],
@@ -412,23 +419,20 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                 qub1, qub2 = get_cnot_qubits(op)
                 if is_pair_in_coupling_map(qub1, qub2, coupling_map):
                     gates_to_insert += compute_cnot_gate_list(qub1, qub2, False)
-                    print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
+                    # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
                 elif is_pair_in_coupling_map(qub2, qub1, coupling_map):
                     gates_to_insert += compute_cnot_gate_list(qub2, qub1, True)
-                    print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
+                    # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
 
             current_gate_count = append_ops_to_dag(compiled_dag, gates_to_insert)
 
-
-    print("--------- Check ------------")
     tmp_solution = get_unrolled_qasm(compiled_dag)
-    tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
 
-    print(tmp_solution_cost, mapped_ok)
-    if mapped_ok:
-        print("Seems OK")
-
-
+    # print("--------- Check ------------")
+    # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
+    # print(tmp_solution_cost, mapped_ok)
+    # if mapped_ok:
+    #     print("Seems OK")
 
     return tmp_solution
 
@@ -499,6 +503,34 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     # #####################
     #
     # # Return the compiled dag circuit
+
+
+def heuristic_choose_coupling_edge_idx(qub1, qub2, coupling_edges_list, coupling_dist, coupling):
+    """
+        Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
+    """
+
+    ret_idx = 0
+
+    qub1_to_index = coupling.qubits[("q", qub1)]
+    qub2_to_index = coupling.qubits[("q", qub2)]
+
+    min_cost = math.inf
+    idx = -1
+    for edge in coupling_edges_list:
+        idx += 1
+        edge1 = edge[0]
+        edge2 = edge[1]
+
+        cost1 = coupling_dist[qub1_to_index][edge1]
+        cost2 = coupling_dist[qub2_to_index][edge2]
+
+        if cost1 + cost2 < min_cost:
+            min_cost = cost1 + cost2
+            ret_idx = idx
+
+    return ret_idx
+
 
 def translate_op_to_coupling_map(op, current_positions):
     '''
