@@ -181,6 +181,10 @@ def is_pair_in_coupling_map(qubit1, qubit2, coupling_map):
 
 def update_configuration(route, configuration):
     initial = []
+
+    if len(route) == 0:
+        return
+
     nr = copy.deepcopy(route)
 
     for i in range(0, len(nr)):
@@ -201,22 +205,27 @@ def compute_swap_chain(route, coupling_map):
     #print(coupling_map)
     ret = []
 
+    if len(route) == 0:
+        return ret
+
     qub1 = route[0]
     for qub2 in route[1:]:
         qtmp = qub2
         is_error = False
+        # is_reversed = True
         if not is_pair_in_coupling_map(qub1, qub2, coupling_map):
-            #qub1, qub2 = qub2, qub1 #swap variables
-            if not is_pair_in_coupling_map(qub2, qub1, coupling_map):
+            qub1, qub2 = qub2, qub1 #swap variables
+            # is_reversed = True
+            if not is_pair_in_coupling_map(qub1, qub2, coupling_map):
                 print("NOT GOOD: Coupling not OK!", qub1, qub2)
                 is_error = True
 
         if not is_error:
             #print(qub1, qub2)
 
-            ret += compute_cnot_gate_list(qub1, qub2, coupling_map, False)
-            ret += compute_cnot_gate_list(qub1, qub2, coupling_map, True)
-            ret += compute_cnot_gate_list(qub1, qub2, coupling_map, False)
+            ret += compute_cnot_gate_list(qub1, qub2, False)
+            ret += compute_cnot_gate_list(qub1, qub2, True)
+            ret += compute_cnot_gate_list(qub1, qub2, False)
 
             # ret.append(("cx", [("q", qub1), ("q", qub2)]))
             # ret.append(("h", [("q", qub1)]))
@@ -239,7 +248,7 @@ def compute_cnot_gate_list(qub1, qub2, inverse_cnot):
     else:
         ret.append({"name": "h", "qargs": [("q", qub1)]})
         ret.append({"name": "h", "qargs": [("q", qub2)]})
-        ret.append({"name": "cx", "qargs": [("q", qub2), ("q", qub1)]})
+        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)]})
         ret.append({"name": "h", "qargs": [("q", qub1)]})
         ret.append({"name": "h", "qargs": [("q", qub2)]})
 
@@ -378,7 +387,7 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                 gates_to_insert += compute_cnot_gate_list(qub1, qub2, False)
                 print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
             elif is_pair_in_coupling_map(qub2, qub1, coupling_map):
-                gates_to_insert += compute_cnot_gate_list(qub1, qub2, True)
+                gates_to_insert += compute_cnot_gate_list(qub2, qub1, True)
                 print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
             else:
                 print("do not add this", qub1, qub2)
@@ -386,11 +395,11 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                     qub 1 and qub2 are not a coupling_map edge
                     Compute a solution
                 '''
-                coupling_edge_idx = 0; #put heuristic here
+                coupling_edge_idx = 0 #put heuristic here to select edge
 
                 route1, route2 = move_qubits_to_edge(qub1, qub2,
-                                                         coupling_edges_list[coupling_edge_idx],
-                                                         coupling)
+                                                     coupling_edges_list[coupling_edge_idx],
+                                                     coupling, coupling_pred)
 
                 gates_to_insert += compute_swap_chain(route1, coupling_map)
                 gates_to_insert += compute_swap_chain(route2, coupling_map)
@@ -405,13 +414,13 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                     gates_to_insert += compute_cnot_gate_list(qub1, qub2, False)
                     print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(op_orig))
                 elif is_pair_in_coupling_map(qub2, qub1, coupling_map):
-                    gates_to_insert += compute_cnot_gate_list(qub1, qub2, True)
+                    gates_to_insert += compute_cnot_gate_list(qub2, qub1, True)
                     print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(op_orig))
-
 
             current_gate_count = append_ops_to_dag(compiled_dag, gates_to_insert)
 
 
+    print("--------- Check ------------")
     tmp_solution = get_unrolled_qasm(compiled_dag)
     tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
 
