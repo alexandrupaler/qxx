@@ -16,9 +16,8 @@
 
 """
 ---------------> please fill out this section <---------------
-v.2 == submitted after deadline just to solve two bugs which had a huge effect.
-The method was
- Please consider this version at least for benchmarking, if not for the competition.
+v.2 == submitted after deadline just to solve two bugs which had a huge effect (very small changes to prev version are visible with diff)
+ It was important to submit a script that generates correct circuits. Thus, we understand that it may not qualify for the competition, but we would greatly appreciate if it would qualify for being included in the official benchmark results.
 
 Your Name : Alexandru Paler , Alwin Zulehner, Robert Wille
 
