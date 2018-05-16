@@ -16,6 +16,9 @@
 
 """
 ---------------> please fill out this section <---------------
+v.2 == submitted after deadline just to solve two bugs which had a huge effect.
+The method was
+ Please consider this version at least for benchmarking, if not for the competition.
 
 Your Name : Alexandru Paler , Alwin Zulehner, Robert Wille
 
@@ -46,7 +49,8 @@ No package except the ones included by qiskit.
 It should be general. See next note.
 
 - Are there known situations when the algorithm fails?
-Yes. For the moment it passes the coupling map check, but it does not pass the correct_state_vector verification. The bug is assumed to be in the way indices between the coupling graph/coupling map/circuit are translated. However, this version of the implementation cannot be fixed on time, due to the deadline.
+Not aware in v2.
+Previous comment was for v1: Yes. For the moment it passes the coupling map check, but it does not pass the correct_state_vector verification. The bug is assumed to be in the way indices between the coupling graph/coupling map/circuit are translated. However, this version of the implementation cannot be fixed on time, due to the deadline.
 
 ---------------> please fill out this section <---------------
 """
@@ -423,7 +427,7 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ed
     """
         Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
     """
-    return 0
+    # return 0
 
     ret_idx = -1
 
