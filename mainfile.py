@@ -28,7 +28,7 @@ if computeScore:
 
         os.remove("run_once_results.json")
 
-    # os.remove("run_once_results.json")
+    #os.remove("run_once_results.json")
     myres = score(compiler_function, backend = backend)
     print("Your compiler scored %6.5f x better \
     and was %6.5f x faster than the QISKit reference compiler." % myres)

@@ -493,6 +493,8 @@ def _prep_sim(sim_args):
             perm[nd["qargs"][0][1]] = nd["cargs"][0][1]
             circuit["dag_optimized"]._remove_op_node(n)
         circuit["perm_optimized"] = [perm[ii] for ii in range(len(perm))]
+
+        print("perm opt", circuit["perm_optimized"])
     res_values["circuit"] = circuit
     return res_values
 

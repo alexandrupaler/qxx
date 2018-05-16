@@ -80,6 +80,9 @@ def add_signatures_to_circuit(dag_circuit):
 
 
 def get_unrolled_qasm(dag_circuit):
+
+    # print(dag_circuit.qasm())
+
     basis_gates = "u1,u2,u3,cx,id"  # QE target basis
     program_node_circuit = qasm.Qasm(data=dag_circuit.qasm()).parse()
     unroller_circuit = unroll.Unroller(program_node_circuit,
