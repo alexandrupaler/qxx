@@ -329,6 +329,7 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
                 #paler transform np.bool_ to bool
                 results[name]["state_correct_optimized"] = bool(correct)
 
+                print(name, bool(correct))
 
                 #skip verification
                 # results[name]["state_correct_optimized"] = True

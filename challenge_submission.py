@@ -120,12 +120,12 @@ def reconstruct_route(start, stop, coupling_pred):
     return list(reversed(route))
 
 
-def move_qubits_to_edge(qub1, qub2, coupling_edge, coupling, coupling_pred):
+def move_qubits_to_edge(qub1, qub2, coupling_edge, coupling, coupling_pred, config_which_index, config_who_index):
 
     # print(coupling_edge)
 
-    qub1_to_index = coupling.qubits[("q", qub1)]
-    qub2_to_index = coupling.qubits[("q", qub2)]
+    qub1_to_index = coupling.qubits[("q", config_which_index[qub1])]
+    qub2_to_index = coupling.qubits[("q", config_which_index[qub2])]
 
     route1 = []
     route2 = []
@@ -180,7 +180,7 @@ def is_pair_in_coupling_map(qubit1, qubit2, coupling_map):
     return pair_pass
 
 
-def update_configuration(route, configuration):
+def update_configuration(route, configuration, current_who_at_index):
     initial = []
 
     if len(route) == 0:
@@ -196,6 +196,8 @@ def update_configuration(route, configuration):
 
     for i in range(0, len(nr)):
         configuration[nr[i]] = initial[i]
+
+    # current_who_at_index = {v: k for k, v in configuration.items()}
 
 
 def compute_swap_chain(route, coupling_map):
@@ -354,6 +356,7 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
         Current logical qubit position on physical qubits
     '''
     current_positions = choose_initial_configuration(dag_circuit)
+    current_who_at_index = {v: k for k, v in current_positions.items()}
 
     #backtracking_stack.append((copy.deepcopy(current_positions), gate AICI NU STIU CE VINE, coupling_edge_idx, last_gate_idx))
 
@@ -361,13 +364,13 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     '''
         Try to build a solution
     '''
+
+    print(coupling_map)
+
     nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
     for gate in nodes_collection:
         op_orig = dag_circuit.multi_graph.node[gate]
         if op_orig["type"] not in ["op"]:
-
-            print("continue with", op_orig)
-
             continue
 
         op = translate_op_to_coupling_map(op_orig, current_positions)
@@ -402,17 +405,29 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                 coupling_edge_idx = heuristic_choose_coupling_edge_idx(qub1, qub2,
                                                                        coupling_edges_list,
                                                                        coupling_dist,
-                                                                       coupling)
+                                                                       coupling,
+                                                                       current_positions)
 
                 route1, route2 = move_qubits_to_edge(qub1, qub2,
                                                      coupling_edges_list[coupling_edge_idx],
-                                                     coupling, coupling_pred)
+                                                     coupling, coupling_pred,
+                                                     current_positions, current_who_at_index)
 
                 gates_to_insert += compute_swap_chain(route1, coupling_map)
                 gates_to_insert += compute_swap_chain(route2, coupling_map)
 
-                update_configuration(route1, current_positions)
-                update_configuration(route2, current_positions)
+
+                route1log = [current_who_at_index[x] for x in route1]
+                route2log = [current_who_at_index[x] for x in route2]
+
+                update_configuration(route1log, current_positions, current_who_at_index)
+                update_configuration(route2log, current_positions, current_who_at_index)
+                current_who_at_index = {v: k for k, v in current_positions.items()}
+
+                print("...........", qub1, qub2)
+                print(route1log)
+                print(route2log)
+                debug_configuration(current_positions)
 
                 #retranslate
                 op = translate_op_to_coupling_map(op_orig, current_positions)
@@ -428,11 +443,11 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
     tmp_solution = get_unrolled_qasm(compiled_dag)
 
-    # print("--------- Check ------------")
-    # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
-    # print(tmp_solution_cost, mapped_ok)
-    # if mapped_ok:
-    #     print("Seems OK")
+    print("--------- Check ------------")
+    tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
+    print(tmp_solution_cost, mapped_ok)
+    if mapped_ok:
+        print("Seems OK")
 
     return tmp_solution
 
@@ -505,15 +520,16 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     # # Return the compiled dag circuit
 
 
-def heuristic_choose_coupling_edge_idx(qub1, qub2, coupling_edges_list, coupling_dist, coupling):
+def heuristic_choose_coupling_edge_idx(qub1, qub2, coupling_edges_list, coupling_dist, coupling, config_which):
     """
         Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
     """
+    return 0
 
-    ret_idx = 0
-
-    qub1_to_index = coupling.qubits[("q", qub1)]
-    qub2_to_index = coupling.qubits[("q", qub2)]
+    ret_idx = -1
+    # TODO: Si aici trebuie schimbat
+    qub1_to_index = coupling.qubits[("q", config_which[qub1])]
+    qub2_to_index = coupling.qubits[("q", config_which[qub2])]
 
     min_cost = math.inf
     idx = -1
@@ -524,9 +540,10 @@ def heuristic_choose_coupling_edge_idx(qub1, qub2, coupling_edges_list, coupling
 
         cost1 = coupling_dist[qub1_to_index][edge1]
         cost2 = coupling_dist[qub2_to_index][edge2]
+        tmp_cost = cost1 + cost2 + coupling_dist[edge1][edge2]
 
-        if cost1 + cost2 < min_cost:
-            min_cost = cost1 + cost2
+        if tmp_cost < min_cost:
+            min_cost = tmp_cost
             ret_idx = idx
 
     return ret_idx
