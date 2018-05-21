@@ -58,6 +58,7 @@ Previous comment was for v1: Yes. For the moment it passes the coupling map chec
 import networkx as nx
 import copy
 import math
+import sympy
 
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
@@ -145,7 +146,7 @@ def is_pair_in_coupling_map(qubit1, qubit2, coupling_map):
     return pair_pass
 
 
-def update_configuration(route, configuration):
+def update_configuration(route, configuration, current_who_at_index):
     initial = []
 
     if len(route) == 0:
@@ -161,6 +162,8 @@ def update_configuration(route, configuration):
 
     for i in range(0, len(nr)):
         configuration[nr[i]] = initial[i]
+
+    current_who_at_index.update({v: k for k, v in configuration.items()})
 
 
 def compute_swap_chain(route, coupling_map):
@@ -201,13 +204,22 @@ def compute_cnot_gate_list(qub1, qub2, inverse_cnot):
     ret = []
 
     if not inverse_cnot:
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)]})
+        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
     else:
-        ret.append({"name": "h", "qargs": [("q", qub1)]})
-        ret.append({"name": "h", "qargs": [("q", qub2)]})
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)]})
-        ret.append({"name": "h", "qargs": [("q", qub1)]})
-        ret.append({"name": "h", "qargs": [("q", qub2)]})
+        # ret.append({"name": "h", "qargs": [("q", qub1)]})
+        # ret.append({"name": "h", "qargs": [("q", qub2)]})
+
+        from sympy import N
+
+        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [N(0), N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [N(0), N(sympy.pi)]})
+
+        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
+
+        # ret.append({"name": "h", "qargs": [("q", qub1)]})
+        # ret.append({"name": "h", "qargs": [("q", qub2)]})
+        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [N(0), N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [N(0), N(sympy.pi)]})
 
     return ret
 
@@ -215,7 +227,7 @@ def compute_cnot_gate_list(qub1, qub2, inverse_cnot):
 def append_ops_to_dag(dag_circuit, op_list):
 
     for op in op_list:
-        dag_circuit.apply_operation_back(op["name"], op["qargs"])#, op["cargs"], op["params"], op["condition"])
+        dag_circuit.apply_operation_back(op["name"], op["qargs"], params=op["params"])
 
     return dag_circuit.node_counter
 
@@ -250,10 +262,12 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
         Coupling related objects
     '''
     # How do you find out the number of qubits in the architecture if coupling_map is None?
-    coupling = Coupling(coupling_map)
-    add_reverse_edges_and_weights(coupling, gate_costs)
-    coupling_pred, coupling_dist = nx.floyd_warshall_predecessor_and_distance(coupling.G, weight="weight")
-    coupling_edges_list = [ e for e in coupling.G.edges()]
+
+    coupling_object = {"coupling": Coupling(coupling_map)}
+
+    add_reverse_edges_and_weights(coupling_object["coupling"], gate_costs)
+    coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(coupling_object["coupling"].G, weight="weight")
+    coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
 
     '''
         Simulate a stack
@@ -321,55 +335,35 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                     Compute a solution
                 '''
 
-                qubit_node_index1 = get_coupling_node_idx(qub1, coupling, current_positions)
-                qubit_node_index2 = get_coupling_node_idx(qub2, coupling, current_positions)
+                qubit_node_index1 = get_coupling_node_idx(qub1, coupling_object["coupling"], current_positions)
+                qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
 
                 coupling_edge_idx = heuristic_choose_coupling_edge_idx(qubit_node_index1,
                                                                        qubit_node_index2,
-                                                                       coupling_edges_list,
-                                                                       coupling_dist)
+                                                                       coupling_object)
 
-                edge_node_index1 = coupling_edges_list[coupling_edge_idx][0]
-                edge_node_index2 = coupling_edges_list[coupling_edge_idx][1]
+                edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
+                edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
 
                 if qubit_node_index1 != edge_node_index1:
-                    '''
-                        Move the first qubit to the first edge position
-                    '''
-                    route1 = reconstruct_route(qubit_node_index1, edge_node_index1, coupling_pred)
-                    route1q = [coupling.index_to_qubit[r][1] for r in route1]
-                    gates_to_insert += compute_swap_chain(route1q, coupling_map)
 
-                    '''
-                        Update the maps
-                    '''
-                    route1log = [current_who_at_index[x] for x in route1q]
-                    update_configuration(route1log, current_positions)
-                    # debug_configuration(current_positions)
-                    current_who_at_index = {v: k for k, v in current_positions.items()}
+                    route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                                                                    coupling_map, coupling_object, current_positions,
+                                                                    current_who_at_index)
+                    gates_to_insert += ret_gates_to_insert
 
                     '''
                         Update: the previous swaps may have moved this qubit around
                     '''
                     op = translate_op_to_coupling_map(op_orig, current_positions)
                     qub1, qub2 = get_cnot_qubits(op)
-                    qubit_node_index2 = get_coupling_node_idx(qub2, coupling, current_positions)
+                    qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
 
                 if qubit_node_index2 != edge_node_index2:
-                    '''
-                        Move the second qubit to the first edge position
-                    '''
-                    route2 = reconstruct_route(qubit_node_index2, edge_node_index2, coupling_pred)
-                    route2q = [coupling.index_to_qubit[r][1] for r in route2]
-                    gates_to_insert += compute_swap_chain(route2q, coupling_map)
-
-                    '''
-                        Update the maps
-                    '''
-                    route2log = [current_who_at_index[x] for x in route2q]
-                    update_configuration(route2log, current_positions)
-                    # debug_configuration(current_positions)
-                    current_who_at_index = {v: k for k, v in current_positions.items()}
+                    route2, ret_gates_to_insert = move_qubit_from_to(qubit_node_index2, edge_node_index2,
+                                                                     coupling_map, coupling_object, current_positions,
+                                                                     current_who_at_index)
+                    gates_to_insert += ret_gates_to_insert
 
                     '''
                         Update: the previous swaps may have moved qub1 backwards
@@ -380,27 +374,17 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                         qubit_node_index1 = route2[route2.index(edge_node_index1) - 1]
 
                         if qubit_node_index1 != edge_node_index1:
-                            '''
-                                Move the first qubit to the first edge position
-                            '''
-                            route1 = reconstruct_route(qubit_node_index1, edge_node_index1, coupling_pred)
-                            route1q = [coupling.index_to_qubit[r][1] for r in route1]
-                            gates_to_insert += compute_swap_chain(route1q, coupling_map)
-
-                            '''
-                                Update the maps
-                            '''
-                            route1log = [current_who_at_index[x] for x in route1q]
-                            update_configuration(route1log, current_positions)
-                            # debug_configuration(current_positions)
-                            current_who_at_index = {v: k for k, v in current_positions.items()}
+                            route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                                                                             coupling_map, coupling_object, current_positions,
+                                                                             current_who_at_index)
+                            gates_to_insert += ret_gates_to_insert
 
                 #retranslate
                 op2 = translate_op_to_coupling_map(op_orig, current_positions)
                 qub1, qub2 = get_cnot_qubits(op2)
 
-                qubit_node_index1 = get_coupling_node_idx(qub1, coupling, current_positions)
-                qubit_node_index2 = get_coupling_node_idx(qub2, coupling, current_positions)
+                # qubit_node_index1 = get_coupling_node_idx(qub1, coupling_object["coupling"], current_positions)
+                # qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
 
                 if is_pair_in_coupling_map(qub1, qub2, coupling_map):
                     gates_to_insert += compute_cnot_gate_list(qub1, qub2, False)
@@ -411,7 +395,7 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
             current_gate_count = append_ops_to_dag(compiled_dag, gates_to_insert)
 
-    tmp_solution = get_unrolled_qasm(compiled_dag)
+    # tmp_solution = get_unrolled_qasm(compiled_dag)
 
     # print("--------- Check ------------")
     # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_solution, coupling_map, gate_costs)
@@ -419,10 +403,38 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     # if mapped_ok:
     #     print("Seems OK")
 
-    return tmp_solution
+    print("--------- Check ------------")
+    tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
+    print(tmp_solution_cost, mapped_ok)
+    if mapped_ok:
+        print("Seems OK")
+
+    return compiled_dag
+    # return tmp_solution
 
 
-def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_edges_list, coupling_dist):
+def move_qubit_from_to(qubit_node_index1, edge_node_index1, coupling_map, coupling_object, current_positions, current_who_at_index):
+
+    '''
+        Move the first qubit to the first edge position
+    '''
+    route1 = reconstruct_route(qubit_node_index1, edge_node_index1, coupling_object["coupling_pred"])
+    route1q = [coupling_object["coupling"].index_to_qubit[r][1] for r in route1]
+    # gates_to_insert += compute_swap_chain(route1q, coupling_map)
+
+    '''
+        Update the maps
+    '''
+    route1log = [current_who_at_index[x] for x in route1q]
+    update_configuration(route1log, current_positions, current_who_at_index)
+    # debug_configuration(current_positions)
+    # current_who_at_index = {v: k for k, v in current_positions.items()}
+
+    return route1, compute_swap_chain(route1q, coupling_map)
+
+
+def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_object):
+                                       #coupling_edges_list, coupling_dist):
     """
         Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
     """
@@ -432,14 +444,14 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ed
 
     min_cost = math.inf
     idx = -1
-    for edge in coupling_edges_list:
+    for edge in coupling_object["coupling_edges_list"]:
         idx += 1
         edge1 = edge[0]
         edge2 = edge[1]
 
-        cost1 = coupling_dist[qub1_to_index][edge1]
-        cost2 = coupling_dist[qub2_to_index][edge2]
-        tmp_cost = cost1 + cost2 + coupling_dist[edge1][edge2]
+        cost1 = coupling_object["coupling_dist"][qub1_to_index][edge1]
+        cost2 = coupling_object["coupling_dist"][qub2_to_index][edge2]
+        tmp_cost = cost1 + cost2 + coupling_object["coupling_dist"][edge1][edge2]
 
         if tmp_cost < min_cost:
             min_cost = tmp_cost

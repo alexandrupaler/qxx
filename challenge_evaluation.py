@@ -62,14 +62,14 @@ def score(compiler_function=None,backend = 'local_qiskit_simulator'):
 
     # Load circuits files
     #TODO: Was 10
-    ex_nr = 10  # examples to add per qubit number. maximum is 10
+    ex_nr = 1  # examples to add per qubit number. maximum is 10
     test_circuit_filenames = {}
     for ii in range(ex_nr):
         test_circuit_filenames['circuits/random%d_n5_d5.qasm' % ii] = load_coupling(maps_q5[ii%len(maps_q5)])["coupling_map"]
-    for ii in range(ex_nr):
-        test_circuit_filenames['circuits/random%d_n16_d16.qasm' % ii] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
-    for ii in range(ex_nr):
-        test_circuit_filenames['circuits/random%d_n20_d20.qasm' % ii] = load_coupling(maps_q20[ii%len(maps_q20)])["coupling_map"]
+    # for ii in range(ex_nr):
+    #     test_circuit_filenames['circuits/random%d_n16_d16.qasm' % ii] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+    # for ii in range(ex_nr):
+    #     test_circuit_filenames['circuits/random%d_n20_d20.qasm' % ii] = load_coupling(maps_q20[ii%len(maps_q20)])["coupling_map"]
 
     # Load example circuits and coupling maps
 
