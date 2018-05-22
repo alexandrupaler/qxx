@@ -28,10 +28,11 @@ if computeScore:
 
         os.remove("run_once_results.json")
 
-    #os.remove("run_once_results.json")
+    # os.remove("run_once_results.json")
+
     myres = score(compiler_function, backend = backend)
     print("Your compiler scored %6.5f x better \
-    and was %6.5f x faster than the QISKit reference compiler." % myres)
+        and was %6.5f x faster than the QISKit reference compiler." % myres)
 else:
     # qasm = ""
     # with open("./circuits/random0_n16_d16.qasm", "r") as f:
@@ -45,4 +46,9 @@ else:
 
     cm = load_coupling("circle_rand_q5")
 
-    compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2)
+    # import itertools
+    # for perm in itertools.permutations(range(5)):
+    #     config = {}
+    #     for i in range(5):
+    #         config[i] = perm[i]
+    compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2, init_config = None)

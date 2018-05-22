@@ -42,7 +42,7 @@ from qiskit.tools.qi.qi import state_fidelity
 #paler
 import json
 
-def score(compiler_function=None,backend = 'local_qiskit_simulator'):
+def score(compiler_function=None, backend = 'local_qiskit_simulator'):
     """
     Scores a compiler function based on a selected set of circuits and layouts
     available in the two respective subfolders.

@@ -97,8 +97,10 @@ def choose_initial_configuration(dag_circuit):
     """
     configuration = {}
 
-    for i in range(get_dag_nr_qubits(dag_circuit)):
-        configuration[i] = i # qubit i@i
+    nrq = get_dag_nr_qubits(dag_circuit)
+    for i in range(nrq):
+        # configuration[i] = nrq - 1 - i # qubit i@i
+        configuration[i] = i  # qubit i@i
 
     return configuration
 
@@ -209,17 +211,15 @@ def compute_cnot_gate_list(qub1, qub2, inverse_cnot):
         # ret.append({"name": "h", "qargs": [("q", qub1)]})
         # ret.append({"name": "h", "qargs": [("q", qub2)]})
 
-        from sympy import N
-
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [N(0), N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [N(0), N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
 
         ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
 
         # ret.append({"name": "h", "qargs": [("q", qub1)]})
         # ret.append({"name": "h", "qargs": [("q", qub2)]})
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [N(0), N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [N(0), N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
+        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
 
     return ret
 
@@ -232,7 +232,7 @@ def append_ops_to_dag(dag_circuit, op_list):
     return dag_circuit.node_counter
 
 
-def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
+def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_config=None):
     """
     Modify a DAGCircuit based on a gate cost function.
 
@@ -285,7 +285,15 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     '''
         Current logical qubit position on physical qubits
     '''
-    current_positions = choose_initial_configuration(dag_circuit)
+    current_positions = init_config
+    if init_config is None:
+        current_positions = choose_initial_configuration(dag_circuit)
+    # else:
+    #     for i in init_config:
+    #         if init_config[i] in coupling_map:
+    #             print(i, "on", init_config[i], "has", coupling_map[init_config[i]])
+    # print("%%%%%%%%%%%%%%%%%")
+
     current_who_at_index = {v: k for k, v in current_positions.items()}
 
     #backtracking_stack.append((copy.deepcopy(current_positions), gate AICI NU STIU CE VINE, coupling_edge_idx, last_gate_idx))
@@ -296,6 +304,41 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     '''
 
     # print(coupling_map)
+
+    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
+
+    #get first set of disjunct cnots
+    fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
+    saved = 0
+    for cnot in fcnots:
+        op = translate_op_to_coupling_map(cnot, current_positions)
+        qub1, qub2 = get_cnot_qubits(op)
+
+        qubit_node_index1 = get_coupling_node_idx(qub1, coupling_object["coupling"], current_positions)
+        qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
+
+        coupling_edge_idx = heuristic_choose_coupling_edge_idx(qubit_node_index1,
+                                                               qubit_node_index2,
+                                                               coupling_object)
+
+        edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
+        edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
+
+        if qubit_node_index1 != edge_node_index1:
+            move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                coupling_map, coupling_object, current_positions,
+                current_who_at_index)
+            saved+=1
+
+        if qubit_node_index2 != edge_node_index2:
+            move_qubit_from_to(qubit_node_index2, edge_node_index2,
+                coupling_map, coupling_object, current_positions,
+                current_who_at_index)
+            saved+=1
+
+    # print("saved", saved)
+    #
+    # return dag_circuit
 
     nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
     for gate in nodes_collection:
@@ -319,7 +362,6 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                 Check that the qubits are on an edge
             '''
             qub1, qub2 = get_cnot_qubits(op)
-
             gates_to_insert = []
 
             if is_pair_in_coupling_map(qub1, qub2, coupling_map):
@@ -345,39 +387,45 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
                 edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
                 edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
 
-                if qubit_node_index1 != edge_node_index1:
+                if qubit_node_index1 == edge_node_index2 and qubit_node_index2 == edge_node_index1:
+                    #do not compute routes
+                    #but make an inverse cnot
+                    gates_to_insert += compute_cnot_gate_list(qubit_node_index2, qubit_node_index1, True)
 
-                    route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
-                                                                    coupling_map, coupling_object, current_positions,
-                                                                    current_who_at_index)
-                    gates_to_insert += ret_gates_to_insert
+                else:
+                    if qubit_node_index1 != edge_node_index1:
 
-                    '''
-                        Update: the previous swaps may have moved this qubit around
-                    '''
-                    op = translate_op_to_coupling_map(op_orig, current_positions)
-                    qub1, qub2 = get_cnot_qubits(op)
-                    qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
+                        route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                                                                        coupling_map, coupling_object, current_positions,
+                                                                        current_who_at_index)
+                        gates_to_insert += ret_gates_to_insert
 
-                if qubit_node_index2 != edge_node_index2:
-                    route2, ret_gates_to_insert = move_qubit_from_to(qubit_node_index2, edge_node_index2,
-                                                                     coupling_map, coupling_object, current_positions,
-                                                                     current_who_at_index)
-                    gates_to_insert += ret_gates_to_insert
+                        '''
+                            Update: the previous swaps may have moved this qubit around
+                        '''
+                        op = translate_op_to_coupling_map(op_orig, current_positions)
+                        qub1, qub2 = get_cnot_qubits(op)
+                        qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
 
-                    '''
-                        Update: the previous swaps may have moved qub1 backwards
-                    '''
-                    if edge_node_index1 in route2:
-                        # qubit_node_index1 = get_coupling_node_idx(qub1, coupling, current_positions)
+                    if qubit_node_index2 != edge_node_index2:
+                        route2, ret_gates_to_insert = move_qubit_from_to(qubit_node_index2, edge_node_index2,
+                                                                         coupling_map, coupling_object, current_positions,
+                                                                         current_who_at_index)
+                        gates_to_insert += ret_gates_to_insert
 
-                        qubit_node_index1 = route2[route2.index(edge_node_index1) - 1]
+                        '''
+                            Update: the previous swaps may have moved qub1 backwards
+                        '''
+                        if edge_node_index1 in route2:
+                            # qubit_node_index1 = get_coupling_node_idx(qub1, coupling, current_positions)
 
-                        if qubit_node_index1 != edge_node_index1:
-                            route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
-                                                                             coupling_map, coupling_object, current_positions,
-                                                                             current_who_at_index)
-                            gates_to_insert += ret_gates_to_insert
+                            qubit_node_index1 = route2[route2.index(edge_node_index1) - 1]
+
+                            if qubit_node_index1 != edge_node_index1:
+                                route1, ret_gates_to_insert = move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                                                                                 coupling_map, coupling_object, current_positions,
+                                                                                 current_who_at_index)
+                                gates_to_insert += ret_gates_to_insert
 
                 #retranslate
                 op2 = translate_op_to_coupling_map(op_orig, current_positions)
@@ -403,15 +451,41 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     # if mapped_ok:
     #     print("Seems OK")
 
-    print("--------- Check ------------")
-    tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
-    print(tmp_solution_cost, mapped_ok)
-    if mapped_ok:
-        print("Seems OK")
+    # compiled_dag = optimize_1q_gates(compiled_dag)
+    # cx_cancellation(compiled_dag)
+
+    # print("--------- Check ------------")
+    # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
+    # print(tmp_solution_cost, mapped_ok)
+    # if mapped_ok:
+    #     print("Seems OK")
+
+    # debug_configuration(current_positions)
 
     return compiled_dag
     # return tmp_solution
 
+
+def first_set_of_disjunct_cnots(nodes_collection, graph, maxqubits):
+    used_qubits = []
+    return_cnots = []
+
+    for node in nodes_collection:
+        gate = graph.nodes[node]
+        if gate["name"] in ["cx", "CX"]:
+            #found a cnot
+
+            qub1, qub2 = get_cnot_qubits(gate)
+            if qub1 not in used_qubits and qub2 not in used_qubits:
+                used_qubits.append(qub1)
+                used_qubits.append(qub2)
+
+                return_cnots.append(gate)
+
+        if len(used_qubits) == maxqubits:
+            break
+
+    return return_cnots
 
 def move_qubit_from_to(qubit_node_index1, edge_node_index1, coupling_map, coupling_object, current_positions, current_who_at_index):
 
@@ -451,7 +525,7 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
 
         cost1 = coupling_object["coupling_dist"][qub1_to_index][edge1]
         cost2 = coupling_object["coupling_dist"][qub2_to_index][edge2]
-        tmp_cost = cost1 + cost2 + coupling_object["coupling_dist"][edge1][edge2]
+        tmp_cost = cost1 + cost2# + coupling_object["coupling_dist"][edge1][edge2]
 
         if tmp_cost < min_cost:
             min_cost = tmp_cost
