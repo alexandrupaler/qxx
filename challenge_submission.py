@@ -80,12 +80,10 @@ def add_reverse_edges_and_weights(coupling, gatecosts):
 
         # the direct edge gets a weight
         coupling.G.add_edge(edg[0], edg[1], weight=gatecosts["cx"])
-        # coupling.G.add_edge(edg[0], edg[1], weight=34)
 
         # the inverse edge
         # three CNOTS + four Hadamards for the swap
         coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
-        # coupling.G.add_edge(edg[1], edg[0], weight=34)
 
 
 def get_dag_nr_qubits(dag_circuit):
@@ -106,7 +104,7 @@ def choose_initial_configuration(dag_circuit, coupling_object):
 
     nrq = get_dag_nr_qubits(dag_circuit)
     import numpy
-    # x = numpy.random.permutation(nrq)
+    x = numpy.random.permutation(nrq)
     for i in range(nrq):
         # configuration[i] = nrq - 1 - i # qubit i@i
         configuration[i] = i  # qubit i@i
@@ -354,36 +352,8 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
         Try to build a solution
     '''
 
-    # print(coupling_map)
-    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
-    #get first set of disjunct cnots
-    fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
-    saved = 0
-    for cnot in fcnots:
-        op = translate_op_to_coupling_map(cnot, current_positions)
-        qub1, qub2 = get_cnot_qubits(op)
-
-        qubit_node_index1 = get_coupling_node_idx(qub1, coupling_object["coupling"], current_positions)
-        qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
-
-        coupling_edge_idx = heuristic_choose_coupling_edge_idx(qubit_node_index1,
-                                                               qubit_node_index2,
-                                                               coupling_object)
-
-        edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
-        edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
-
-        if qubit_node_index1 != edge_node_index1:
-            move_qubit_from_to(qubit_node_index1, edge_node_index1,
-                coupling_map, coupling_object, current_positions,
-                current_who_at_index)
-
-        if qubit_node_index2 != edge_node_index2:
-            move_qubit_from_to(qubit_node_index2, edge_node_index2,
-                coupling_map, coupling_object, current_positions,
-                current_who_at_index)
-
     # print("saved", saved)
+
     #
     # return dag_circuit
 
@@ -416,13 +386,15 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
         tmp_dag, backtracking_stack = find_solution(coupling_map, coupling_object, collect_config[k][1],
                                                          current_who_at_index, dag_circuit, True)
 
-        tmp_solution_cost = sum(bs[2] for bs in backtracking_stack)
-        # mapped_ok = "did not check"
+        # fourth element in the tuple is the cost
+        tmp_solution_cost = sum(bs[3] for bs in backtracking_stack)
+
         # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_dag, coupling_map, gate_costs)
         if tmp_solution_cost <= min_cost:
             # compiled_dag = tmp_dag
             min_cost = tmp_solution_cost
             min_current_positions = k
+        # mapped_ok = "did not check"
         # print(tmp_solution_cost, mapped_ok)
 
     '''
@@ -433,8 +405,6 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
                                                 current_who_at_index, dag_circuit, False)
 
     # compiled_dag = optimize_1q_gates(compiled_dag)
-    # paler_cx_cancellation(compiled_dag)
-    #
     # cx_cancellation(compiled_dag)
     #
     # print("--------- Check ------------")
@@ -444,6 +414,38 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
     #     print("Seems OK")
 
     return compiled_dag
+
+
+def save_first_swaps(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit):
+    # print(coupling_map)
+    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
+    # get first set of disjunct cnots
+    fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
+    # saved = 0
+    for cnot in fcnots:
+        op = translate_op_to_coupling_map(cnot, current_positions)
+        qub1, qub2 = get_cnot_qubits(op)
+
+        qubit_node_index1 = get_coupling_node_idx(qub1, coupling_object["coupling"], current_positions)
+        qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
+
+        coupling_edge_idx = heuristic_choose_coupling_edge_idx(qubit_node_index1,
+                                                               qubit_node_index2,
+                                                               coupling_object)
+
+        edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
+        edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
+
+        if qubit_node_index1 != edge_node_index1:
+            move_qubit_from_to(qubit_node_index1, edge_node_index1,
+                               coupling_map, coupling_object, current_positions,
+                               current_who_at_index)
+
+        if qubit_node_index2 != edge_node_index2:
+            move_qubit_from_to(qubit_node_index2, edge_node_index2,
+                               coupling_map, coupling_object, current_positions,
+                               current_who_at_index)
+
 
 def find_solution(coupling_map, coupling_object, current_positions, current_who_at_index,
                   dag_circuit, no_circuit):
@@ -459,6 +461,7 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
     :return:
     '''
 
+    save_first_swaps(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit)
 
     # Simulate a stack
     backtracking_stack = []
@@ -685,7 +688,7 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
         cost1 = coupling_object["coupling_dist"][qub1_to_index][edge1]
         cost2 = coupling_object["coupling_dist"][qub2_to_index][edge2]
         # do not consider interaction cost?
-        tmp_cost = cost1 + cost2 + coupling_object["coupling_dist"][qub1_to_index][qub2_to_index]
+        tmp_cost = cost1 + cost2# + coupling_object["coupling_dist"][qub1_to_index][qub2_to_index]
 
         if tmp_cost < min_cost:
             min_cost = tmp_cost
