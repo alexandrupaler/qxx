@@ -59,14 +59,15 @@ import networkx as nx
 import copy
 import math
 import sympy
-import operator
+#import operator
 import collections
 
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
-from qiskit import qasm, unroll
+# from qiskit import qasm, unroll
 
 from gatesignatures import add_signatures_to_circuit, get_unrolled_qasm
+from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
 operation_costs = {"swap": 34, "rev_cnot": 4, "ok": 0}
 
@@ -79,10 +80,12 @@ def add_reverse_edges_and_weights(coupling, gatecosts):
 
         # the direct edge gets a weight
         coupling.G.add_edge(edg[0], edg[1], weight=gatecosts["cx"])
+        # coupling.G.add_edge(edg[0], edg[1], weight=34)
 
         # the inverse edge
         # three CNOTS + four Hadamards for the swap
         coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
+        # coupling.G.add_edge(edg[1], edg[0], weight=34)
 
 
 def get_dag_nr_qubits(dag_circuit):
@@ -265,11 +268,12 @@ def compute_cnot_gate_list(qub1, qub2, inverse_cnot):
 
     return ret
 
-
 def append_ops_to_dag(dag_circuit, op_list):
 
     for op in op_list:
-        dag_circuit.apply_operation_back(op["name"], op["qargs"], params=op["params"])
+        if paler_cx_cancellation(dag_circuit, op):
+            if paler_simplify_1q(dag_circuit, op):
+                dag_circuit.apply_operation_back(op["name"], op["qargs"], params=op["params"])
 
     return dag_circuit.node_counter
 
@@ -407,19 +411,19 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
     min_cost = math.inf
     min_current_positions = "what is here?"
     for k in collect_config:
-        print(collect_config[k][0], ":", collect_config[k][1])
+        # print(collect_config[k][0], ":", collect_config[k][1])
         current_who_at_index = {v: k for k, v in collect_config[k][1].items()}
         tmp_dag, backtracking_stack = find_solution(coupling_map, coupling_object, collect_config[k][1],
                                                          current_who_at_index, dag_circuit, True)
 
         tmp_solution_cost = sum(bs[2] for bs in backtracking_stack)
-        mapped_ok = "did not check"
+        # mapped_ok = "did not check"
         # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_dag, coupling_map, gate_costs)
         if tmp_solution_cost <= min_cost:
             # compiled_dag = tmp_dag
             min_cost = tmp_solution_cost
             min_current_positions = k
-        print(tmp_solution_cost, mapped_ok)
+        # print(tmp_solution_cost, mapped_ok)
 
     '''
         The minimum cost configuration will be used
@@ -429,13 +433,15 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None, init_conf
                                                 current_who_at_index, dag_circuit, False)
 
     # compiled_dag = optimize_1q_gates(compiled_dag)
+    # paler_cx_cancellation(compiled_dag)
+    #
     # cx_cancellation(compiled_dag)
-
-    print("--------- Check ------------")
-    tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
-    print(tmp_solution_cost, mapped_ok)
-    if mapped_ok:
-        print("Seems OK")
+    #
+    # print("--------- Check ------------")
+    # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
+    # print(tmp_solution_cost, mapped_ok)
+    # if mapped_ok:
+    #     print("Seems OK")
 
     return compiled_dag
 
@@ -486,7 +492,10 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
                 A place to include a heuristic
             '''
             if not no_circuit:
-                compiled_dag.apply_operation_back(op["name"], op["qargs"], op["cargs"], op["params"], op["condition"])
+                if op["name"] in ["u1", "u2", "u3"]:
+                    append_ops_to_dag(compiled_dag, [op])
+                else:
+                    compiled_dag.apply_operation_back(op["name"], op["qargs"], op["cargs"], op["params"], op["condition"])
         else:
             '''
                 Found a CNOT:
@@ -657,11 +666,11 @@ def move_qubit_from_to(qubit_node_index1, edge_node_index1, coupling_map, coupli
 
 
 def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_object):
-                                       #coupling_edges_list, coupling_dist):
     """
         Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
         Returns: the total cost of moving qub1 and qub2 and interacting them
     """
+    # to debug
     # return 0
 
     ret_idx = -1
@@ -675,8 +684,8 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
 
         cost1 = coupling_object["coupling_dist"][qub1_to_index][edge1]
         cost2 = coupling_object["coupling_dist"][qub2_to_index][edge2]
-        # do not consider interaction cost
-        tmp_cost = cost1 + cost2
+        # do not consider interaction cost?
+        tmp_cost = cost1 + cost2 + coupling_object["coupling_dist"][qub1_to_index][qub2_to_index]
 
         if tmp_cost < min_cost:
             min_cost = tmp_cost
@@ -755,7 +764,11 @@ def check_solution_and_compute_cost(dag_circuit, coupling_map, gate_costs):
 
 def get_cnot_qubits(op):
     qubit1 = op["qargs"][0][1]
-    qubit2 = op["qargs"][1][1]
+
+    qubit2 = -1
+    if len(op["qargs"]) == 2:
+        qubit2 = op["qargs"][1][1]
+
     return qubit1, qubit2
 
 
