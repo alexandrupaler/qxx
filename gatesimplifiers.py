@@ -1,11 +1,9 @@
-from qiskit.mapper._compiling import rz_array, ry_array, euler_angles_1q
-
 import numpy as np
-
 import networkx as nx
-
 import sympy
+
 from sympy import Number as N
+from qiskit.mapper._compiling import rz_array, ry_array, euler_angles_1q
 
 def paler_cx_cancellation(circuit, gate):
     '''
@@ -47,10 +45,10 @@ def paler_cx_cancellation(circuit, gate):
 
 def paler_simplify_1q(circuit, gate):
     '''
-    Cancel a CNOT in the circuit if the gate to add is a similar CNOT
-    :param circuit: the circuit
-    :param gate: the cnot
-    :return: True if to add the cnot to the circuit
+    Multiply single qubit gates together
+    :param circuit:
+    :param gate: gate analysed. It can be a CNOT, then not considered
+    :return: if the gate should be added to the circuit
     '''
     #is this a single qubit gate?
     if gate["name"] not in ["u1", "u2", "u3"]:
@@ -65,17 +63,13 @@ def paler_simplify_1q(circuit, gate):
     if circuit.multi_graph.node[pred1[0]]["name"] not in ["u1", "u2", "u3"]:
         return True
 
-    copied_from_qiskit(circuit, [pred1[0]], gate)
+    modified_from_qiskit(circuit, [pred1[0]], gate)
 
     return False
 
-def copied_from_qiskit(unrolled, run, gate):
-    # qname = unrolled.multi_graph.node[run[0]]["qargs"][0]
-    # right_name = "u1"
-    # right_parameters = (N(0), N(0), N(0))  # (theta, phi, lambda)
-
+def modified_from_qiskit(unrolled, run, gate):
     node_right = unrolled.multi_graph.node[run[0]]
-    # qname = node_right["qargs"][0]
+
     right_name = node_right["name"]
     right_parameters = (N(0), N(0), N(0))  # (theta, phi, lambda)
     if right_name == "u1":

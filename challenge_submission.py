@@ -220,7 +220,7 @@ def compute_swap_chain_and_cost(route, coupling_map, no_circuit):
     ret = []
 
     if len(route) == 0:
-        return ret
+        return ret, 0
 
     # print("route phys qubits", route)
 
@@ -345,6 +345,8 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     current_positions = choose_initial_configuration(dag_circuit, coupling_object, False)
     current_who_at_index = {v: k for k, v in current_positions.items()}
 
+    # try_a_new_start_configuration(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit)
+
     '''
         Start with an initial configuration
     '''
@@ -410,13 +412,103 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
     return compiled_dag
 
+def try_a_new_start_configuration(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit):
+    # print(coupling_map)
+    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
+    # get first set of disjunct cnots
+    fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
+
+    # compute the match of the coupling_graph
+    coupling_undirected = nx.to_undirected(coupling_object["coupling"].G)
+    coupling_match = list(nx.maximal_matching(coupling_undirected))
+
+    all_circuit_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
+    all_architecture_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
+
+    #sort fcnots
+    fcnots.sort(key=lambda x: x["qargs"][0][1])
+    coupling_match.sort(key=lambda x: x[0])
+
+    #place cnots on the matched edges
+    while len(coupling_match) > 0 and len(fcnots) > 0:
+
+        edge = coupling_match.pop()
+        cnot = fcnots.pop()
+
+        #which architecture qubits does the edge correspond to?
+        edge1 = coupling_object["coupling"].index_to_qubit[edge[0]][1]
+        edge2 = coupling_object["coupling"].index_to_qubit[edge[1]][1]
+
+        #which circuit qubits are in the cnot?
+        cnot_q1, cnot_q2 = get_cnot_qubits(cnot)
+
+        #place cnot on edge
+        current_positions[cnot_q1] = edge1
+        current_positions[cnot_q2] = edge2
+
+        #remove from collections
+        all_architecture_qubits.remove(edge1)
+        all_architecture_qubits.remove(edge2)
+        all_circuit_qubits.remove(cnot_q1)
+        all_circuit_qubits.remove(cnot_q2)
+
+
+    #at this point collections should have same lengths
+    for i in range(len(all_circuit_qubits)):
+        current_positions[all_circuit_qubits[i]] = all_architecture_qubits[i]
+
+    current_who_at_index.update({v: k for k, v in current_positions.items()})
+
 
 def save_first_swaps(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit):
     # print(coupling_map)
     nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
     # get first set of disjunct cnots
     fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
-    # saved = 0
+
+    # # compute the match of the coupling_graph
+    # coupling_undirected = nx.to_undirected(coupling_object["coupling"].G)
+    # coupling_match = list(nx.maximal_matching(coupling_undirected))
+    #
+    # all_circuit_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
+    # all_architecture_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
+    #
+    # #sort fcnots
+    # fcnots.sort(key=lambda x: x["qargs"][0][1])
+    # coupling_match.sort(key=lambda x: x[0])
+    #
+    # #place cnots on the matched edges
+    # while len(coupling_match) > 0 and len(fcnots) > 0:
+    #
+    #     edge = coupling_match.pop()
+    #     cnot = fcnots.pop()
+    #
+    #     #which architecture qubits does the edge correspond to?
+    #     edge1 = coupling_object["coupling"].index_to_qubit[edge[0]][1]
+    #     edge2 = coupling_object["coupling"].index_to_qubit[edge[1]][1]
+    #
+    #     #which circuit qubits are in the cnot?
+    #     cnot_q1, cnot_q2 = get_cnot_qubits(cnot)
+    #
+    #     #place cnot on edge
+    #     current_positions[cnot_q1] = edge1
+    #     current_positions[cnot_q2] = edge2
+    #
+    #     #remove from collections
+    #     all_architecture_qubits.remove(edge1)
+    #     all_architecture_qubits.remove(edge2)
+    #     all_circuit_qubits.remove(cnot_q1)
+    #     all_circuit_qubits.remove(cnot_q2)
+    #
+    #
+    # #at this point collections should have same lengths
+    # for i in range(len(all_circuit_qubits)):
+    #     current_positions[all_circuit_qubits[i]] = all_architecture_qubits[i]
+    #
+    # current_who_at_index.update({v: k for k, v in current_positions.items()})
+    #
+    # return
+
     for cnot in fcnots:
         op = translate_op_to_coupling_map(cnot, current_positions)
         qub1, qub2 = get_cnot_qubits(op)
@@ -719,17 +811,24 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
 
         cost1 = coupling_object["coupling_dist"][qub1_to_index][edge1]
         cost2 = coupling_object["coupling_dist"][qub2_to_index][edge2]
+
         # do not consider interaction cost?
         tmp_cost = cost1 + cost2# + coupling_object["coupling_dist"][qub1_to_index][qub2_to_index]
 
-        f_idx = len(next_nodes)
-        for node in next_nodes:
-            tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge1]
-            tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge2]
-            f_idx -= 1
+        '''
+            A kind of clustering heuristic: the closer the edge is to previous CNOTs, the better (?)
+        '''
+        # f_idx = len(next_nodes)
+        # for node in next_nodes:
+        #     tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge1]
+        #     tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge2]
+        #     f_idx -= 1
 
-        if coupling_object["coupling_dist"][edge1][edge2] == 14:
-            tmp_cost *= 1.1
+        '''
+            A kind of preference heuristic: prefer edges with the direction of the cnot to execute 
+        '''
+        # if coupling_object["coupling_dist"][edge1][edge2] == 14:
+        #     tmp_cost *= 1.1
 
         if tmp_cost <= min_cost:
             min_cost = tmp_cost
