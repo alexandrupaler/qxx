@@ -51,4 +51,4 @@ else:
     #     config = {}
     #     for i in range(5):
     #         config[i] = perm[i]
-    compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2, init_config = None)
+    compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2)
