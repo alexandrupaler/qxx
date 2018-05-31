@@ -26,7 +26,9 @@ Your E-Mail : alexandru.paler@jku.at
 Description of the algorithm : K7M
 
 - How does the algorithm work?
-In order to generate efficient heuristics and to compare their efficiency, we started analysing how an exact solution would look like, and where heuristics would fit into the exact model. The exact solution is a backtracking implemented on a stack. Each CNOT gate from the original circuit (should) increment(s) the levels of stack. The observation is that, it is necessary to place the CNOT on one of the edges of the coupling graph. Therefore, at each step there are 2|A| possible edges where the CNOT can be placed (the coupling graph is augmented with the reversed edges and has |A| edges). We recognised at least four places to include heuristics: 0) circuit preprocessing; 1) initial placement; 2) placing a CNOT on the coupling map; 3) grouping CNOTs (thus filling the stack faster); 4) methods for computing the necessary SWAPS between two stack levels (thus, between two CNOTs or two layers); 5) postprocessing of the circuit
+
+Compilation speed and straightforward, efficient heuristics are the goals of K7M. The algorithmic design started from a clear formulation of the exact solution, which was based on backtracking. Local optimisations were preferred to global ones, and therefore the employed heuristics are of the type "minimise a cost function given as few details as possible about the search space". The problem formulation enables the implementation of modular heuristics: pre- and post-processing, computing the next algorithmic step etc0 (more details will be available on arxiv). Briefly, the problem is split into two sub-problems: 1) find a cost-efficient placement of circuit qubits to architecture qubits; 2) implement using as few SWAPs as possible the CNOTs from the circuit (place CNOT on one of the edges of the coupling graph). Both problems are combinatorial optimisation problems, but whose solution heuristics are expressed using pathfinding similar methods.
+
 
 The intention is to use a complete implementation of this algorithm (present version is not finished) to investigate the trade-offs between speed and efficiency. Currently, on the available test examples, using the very simple heuristics it achives on average 0.66x improvement compared to QISKit for a 33x speed-up. However, see correctness.
 
@@ -82,7 +84,9 @@ def add_reverse_edges_and_weights(coupling, gatecosts):
 
         # the inverse edge
         # CNOT + four Hadamards for the reverse
-        coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
+        # coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
+        coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"])
+
 
 
 def get_dag_nr_qubits(dag_circuit):
@@ -102,11 +106,18 @@ def choose_initial_configuration(dag_circuit, coupling_object, random=False):
     configuration = {}
 
     nrq = get_dag_nr_qubits(dag_circuit)
+
+    from test import cuthill_order
+    # if nrq > 6:
+    y = cuthill_order(dag_circuit)
+    # else:
+    #     y = list(range(nrq))
+
     import numpy
     x = numpy.random.permutation(nrq)
     for i in range(nrq):
         # configuration[i] = nrq - 1 - i # qubit i@i
-        configuration[i] = i  # qubit i@i
+        configuration[i] = y[i]  # qubit i@i
         if random:
             configuration[i] = x[i]
 
@@ -466,49 +477,6 @@ def save_first_swaps(coupling_map, coupling_object, current_positions, current_w
     # get first set of disjunct cnots
     fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
 
-    # # compute the match of the coupling_graph
-    # coupling_undirected = nx.to_undirected(coupling_object["coupling"].G)
-    # coupling_match = list(nx.maximal_matching(coupling_undirected))
-    #
-    # all_circuit_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
-    # all_architecture_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
-    #
-    # #sort fcnots
-    # fcnots.sort(key=lambda x: x["qargs"][0][1])
-    # coupling_match.sort(key=lambda x: x[0])
-    #
-    # #place cnots on the matched edges
-    # while len(coupling_match) > 0 and len(fcnots) > 0:
-    #
-    #     edge = coupling_match.pop()
-    #     cnot = fcnots.pop()
-    #
-    #     #which architecture qubits does the edge correspond to?
-    #     edge1 = coupling_object["coupling"].index_to_qubit[edge[0]][1]
-    #     edge2 = coupling_object["coupling"].index_to_qubit[edge[1]][1]
-    #
-    #     #which circuit qubits are in the cnot?
-    #     cnot_q1, cnot_q2 = get_cnot_qubits(cnot)
-    #
-    #     #place cnot on edge
-    #     current_positions[cnot_q1] = edge1
-    #     current_positions[cnot_q2] = edge2
-    #
-    #     #remove from collections
-    #     all_architecture_qubits.remove(edge1)
-    #     all_architecture_qubits.remove(edge2)
-    #     all_circuit_qubits.remove(cnot_q1)
-    #     all_circuit_qubits.remove(cnot_q2)
-    #
-    #
-    # #at this point collections should have same lengths
-    # for i in range(len(all_circuit_qubits)):
-    #     current_positions[all_circuit_qubits[i]] = all_architecture_qubits[i]
-    #
-    # current_who_at_index.update({v: k for k, v in current_positions.items()})
-    #
-    # return
-
     for cnot in fcnots:
         op = translate_op_to_coupling_map(cnot, current_positions)
         qub1, qub2 = get_cnot_qubits(op)
@@ -824,10 +792,10 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
         #     tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge2]
         #     f_idx -= 1
 
-        '''
-            A kind of preference heuristic: prefer edges with the direction of the cnot to execute 
-        '''
-        # if coupling_object["coupling_dist"][edge1][edge2] == 14:
+        # '''
+        #     A kind of preference heuristic: prefer edges with the direction of the cnot to execute
+        # '''
+        # if coupling_object["coupling_dist"][edge1][edge2] == 14:#TODO: disabled in the add_reverse_edges
         #     tmp_cost *= 1.1
 
         if tmp_cost <= min_cost:
