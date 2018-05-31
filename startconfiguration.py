@@ -15,95 +15,96 @@ def sum_chain(chain, order):
     return sumx
 
 
-def update_dictionary(dictionary, ckey):
-    if ckey not in dictionary:
-        new_name = dictionary["total"]
-        dictionary[ckey] = new_name
-        # dictionary[new_name] = ckey
-
-        dictionary["total"] += 1
-
-        # print(ckey, "is", new_name)
-
-
-def complete_dictionary(dictionary, maxnr):
-    for di in range(maxnr):
-        update_dictionary(dictionary, di)
-
-
-def get_dictionary_value(dictionary, key):
-    ret = key
-
-    if key in dictionary:
-        ret = dictionary[key]
-
-    return ret
-
-
-def get_new_qubit_names(dictionary, ckey, chain):
-    update_dictionary(dictionary, ckey)
-
-    for cd in chain:
-        update_dictionary(dictionary, cd)
-
-
-def replace_qubit_names(dictionary, chains):
-    new_chains = {}
-
-    for chaink in chains:
-        name = get_dictionary_value(dictionary, chaink)
-        new_chains[name] = []
-
-        for cv in chains[chaink]:
-            value = get_dictionary_value(dictionary, cv)
-            new_chains[name].append(value)
-
-    return new_chains
-
-
-def initialise_chains(nr_qubits):
-    ret = {}
-    for qi in range(nr_qubits):
-        ret[qi] = [qi]
-    return ret
-
-
-def analyse_chain(chain, order):
-    frequency = {}
-    for ci in chain[1:]:
-        if order[ci] not in frequency:
-            frequency[order[ci]] = 0
-        frequency[order[ci]] += 1
-
-    sumc = sum_chain(chain, order)
-
-    frequency_list = sorted(frequency.items(), key=operator.itemgetter(1), reverse=True)
-
-    return {"name": order[chain[0]], "sum": sumc, "freq": frequency_list}
+# def update_dictionary(dictionary, ckey):
+#     if ckey not in dictionary:
+#         new_name = dictionary["total"]
+#         dictionary[ckey] = new_name
+#         # dictionary[new_name] = ckey
+#
+#         dictionary["total"] += 1
+#
+#         # print(ckey, "is", new_name)
+#
+#
+# def complete_dictionary(dictionary, maxnr):
+#     for di in range(maxnr):
+#         update_dictionary(dictionary, di)
+#
+#
+# def get_dictionary_value(dictionary, key):
+#     ret = key
+#
+#     if key in dictionary:
+#         ret = dictionary[key]
+#
+#     return ret
+#
+#
+# def get_new_qubit_names(dictionary, ckey, chain):
+#     update_dictionary(dictionary, ckey)
+#
+#     for cd in chain:
+#         update_dictionary(dictionary, cd)
+#
+#
+# def replace_qubit_names(dictionary, chains):
+#     new_chains = {}
+#
+#     for chaink in chains:
+#         name = get_dictionary_value(dictionary, chaink)
+#         new_chains[name] = []
+#
+#         for cv in chains[chaink]:
+#             value = get_dictionary_value(dictionary, cv)
+#             new_chains[name].append(value)
+#
+#     return new_chains
+#
+#
+# def initialise_chains(nr_qubits):
+#     ret = {}
+#     for qi in range(nr_qubits):
+#         ret[qi] = [qi]
+#     return ret
 
 
-def analyse_chains(chains_local, order):
-    analysis = []
+# def analyse_chain(chain, order):
+#     frequency = {}
+#     for ci in chain[1:]:
+#         if order[ci] not in frequency:
+#             frequency[order[ci]] = 0
+#         frequency[order[ci]] += 1
+#
+#     sumc = sum_chain(chain, order)
+#
+#     frequency_list = sorted(frequency.items(), key=operator.itemgetter(1), reverse=True)
+#
+#     return {"name": order[chain[0]], "sum": sumc, "freq": frequency_list}
+#
+#
+# def analyse_chains(chains_local, order):
+#     analysis = []
+#
+#     for ci in chains_local:
+#         analysis.append(analyse_chain(chains_local[ci], order))
+#
+#     analysis.sort(key=lambda x: x["sum"], reverse=True)
+#
+#     return analysis
 
-    for ci in chains_local:
-        analysis.append(analyse_chain(chains_local[ci], order))
 
-    analysis.sort(key=lambda x: x["sum"], reverse=True)
-
-    return analysis
-
-
-def order_swap(order, ki, kj):
-    # print("swap", ki, kj)
-
-    tmp = order[ki]
-    order[ki] = order[kj]
-    order[kj] = tmp
+# def order_swap(order, ki, kj):
+#     # print("swap", ki, kj)
+#
+#     tmp = order[ki]
+#     order[ki] = order[kj]
+#     order[kj] = tmp
 
 
-def eval_cx_collection(cx_collection, order, limit):
+def eval_cx_collection(cx_collection, order, limit, attenuate=False):
     sum_eval = 0
 
+    t = 0
     for tu in cx_collection:
         c1 = order[tu[0]]
         c2 = order[tu[1]]
@@ -111,7 +112,14 @@ def eval_cx_collection(cx_collection, order, limit):
         if c1 > limit or c2 > limit:
             continue
 
-        sum_eval += abs(c1 - c2)
+        part = abs(c1 - c2)
+        if attenuate:
+            factor = t/len(cx_collection)
+            part *= 1-factor
+
+        sum_eval += part
+
+        t += 1
 
     return sum_eval
 
@@ -119,11 +127,11 @@ def eval_cx_collection(cx_collection, order, limit):
     Main
 '''
 def cuthill_order(dag_circuit):
-    qasm = ""
-    with open("./circuits/random1_n20_d20.qasm", "r") as f:
-        qasm = f.read()
-
-    dag_circuit = qasm_to_dag_circuit(qasm)
+    # qasm = ""
+    # with open("./circuits/random1_n20_d20.qasm", "r") as f:
+    #     qasm = f.read()
+    #
+    # dag_circuit = qasm_to_dag_circuit(qasm)
 
     nrq = dag_circuit.width()
     order = list(range(nrq))
@@ -152,8 +160,12 @@ def cuthill_order(dag_circuit):
     '''
         Parameters for search
     '''
-    parameter_max_children = 5#math.inf
+    #maximum number of children of a node
+    parameter_max_children = math.inf
+    #maximum depth of the search tree
     parameter_max_depth = nrq
+    #the first number_of_qubits * this factor the search maximises the cost
+    #afterwards it minimises it
     parameter_qubit_increase_factor = 1.4
 
     order = [math.inf for x in order]
@@ -163,42 +175,51 @@ def cuthill_order(dag_circuit):
 
         all_leafs = [x for x in options_tree.nodes() if options_tree.out_degree(x) == 0]
 
+        '''
+            Cut-Off search heuristic for placement
+        '''
         if limit % parameter_max_depth == 0:
 
             minnode, mincost = evaluate_leafs(all_leafs, options_tree)
 
+            '''
+                Clean the tree and leave only the best path
+            '''
             all_nodes = list(options_tree.nodes())
             all_nodes.remove(minnode)
-
             p_prev_leaf = minnode
+            #this is the path to keep in the tree
             while len(options_tree.pred[p_prev_leaf]) == 1:
                 p_prev_leaf = list(options_tree.pred[p_prev_leaf])[0]
                 all_nodes.remove(p_prev_leaf)
-
             options_tree.remove_nodes_from(all_nodes)
 
-            # all_leafs = [x for x in options_tree.nodes() if options_tree.out_degree(x) == 0]
+            #update the leafs to be used further
             all_leafs = [minnode]
 
 
         # print("limit", limit)
 
         for prev_leaf in all_leafs:
-
+            #setup ordering based on parents of this node
             set_partial_permutation(limit, options_tree, order, prev_leaf)
 
+            #where to store candidates
             local_minimas = []
             hold_sum = math.inf
             if limit < nrq / parameter_qubit_increase_factor:
-                hold_sum = -math.inf
+                hold_sum = - math.inf
+
+
+            leaf_ancestors = [options_tree.node[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
+            leaf_ancestors.append(options_tree.node[prev_leaf]["name"])
 
             for qubit in range(nrq):
 
-                ancestors = [options_tree.node[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
-
-                if qubit in ancestors or qubit == options_tree.node[prev_leaf]["name"]:
+                if qubit in leaf_ancestors:# or qubit == options_tree.node[prev_leaf]["name"]:
                     continue
 
+                #place qubit
                 order[qubit] = limit
 
                 prev_sum = options_tree.node[prev_leaf]["cost"]
@@ -218,10 +239,13 @@ def cuthill_order(dag_circuit):
                     elif sume == hold_sum and len(local_minimas) < parameter_max_children:
                         local_minimas.append(qubit)
 
+                # reset placement
                 order[qubit] = math.inf
 
+            #reset entire ordering
             set_partial_permutation(math.inf, options_tree, order, prev_leaf)
 
+            # add leafs to the node that generated these permutations
             for lmin in local_minimas:
                 new_node_name = maximum_nr_node
                 maximum_nr_node += 1
@@ -239,7 +263,7 @@ def cuthill_order(dag_circuit):
 
     set_partial_permutation(nrq, options_tree, order, minnode)
 
-    print("sum eval:", mincost)
+    print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
     # print(order)
 
     return order
@@ -403,32 +427,5 @@ def set_partial_permutation(limit, options_tree, order, prev_leaf):
         if limit != math.inf:
             position -= 1
         order[options_tree.node[p_prev_leaf]["name"]] = position
-
-#
-# new_names = {"total": 0}
-# get_new_qubit_names(new_names, cw, chains[cw])
-# # complete_dictionary(new_names, nrq)
-#
-# chains = replace_qubit_names(new_names, chains)
-#
-# print(cw, "---------")
-
-
-
-
-
-
-
-
-
-
-# # write to qpic file
-# with open("./qcirc.qpic", "w") as f:
-#     for s in qpic_commands:
-#         f.write(s)
-
-
-
-
 
 

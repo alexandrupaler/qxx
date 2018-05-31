@@ -107,7 +107,7 @@ def choose_initial_configuration(dag_circuit, coupling_object, random=False):
 
     nrq = get_dag_nr_qubits(dag_circuit)
 
-    from test import cuthill_order
+    from startconfiguration import cuthill_order
     # if nrq > 6:
     y = cuthill_order(dag_circuit)
     # else:
@@ -356,23 +356,19 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     current_positions = choose_initial_configuration(dag_circuit, coupling_object, False)
     current_who_at_index = {v: k for k, v in current_positions.items()}
 
-    # try_a_new_start_configuration(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit)
-
     '''
         Start with an initial configuration
     '''
 
-    # if get_dag_nr_qubits(dag_circuit) > 6:
     compiled_dag, backtracking_stack = find_solution(coupling_map, coupling_object, current_positions,
                                             current_who_at_index, dag_circuit, False)
+                                            # current_who_at_index, dag_circuit, True)
 
     return compiled_dag
-    # else:
-    #     compiled_dag, backtracking_stack = find_solution(coupling_map, coupling_object, current_positions,
-    #                                                      current_who_at_index, dag_circuit, True)
 
     '''
-    Collect all configurations encountered
+        It is possible to collect all configurations encountered
+        Slows everything, and no huge benefit on test circuits
     '''
     collect_config = {}
     # analyse saved configurations
@@ -422,53 +418,6 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     #     print("Seems OK")
 
     return compiled_dag
-
-def try_a_new_start_configuration(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit):
-    # print(coupling_map)
-    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
-    # get first set of disjunct cnots
-    fcnots = first_set_of_disjunct_cnots(nodes_collection, dag_circuit.multi_graph, get_dag_nr_qubits(dag_circuit))
-
-    # compute the match of the coupling_graph
-    coupling_undirected = nx.to_undirected(coupling_object["coupling"].G)
-    coupling_match = list(nx.maximal_matching(coupling_undirected))
-
-    all_circuit_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
-    all_architecture_qubits = list(range(get_dag_nr_qubits(dag_circuit)))
-
-    #sort fcnots
-    fcnots.sort(key=lambda x: x["qargs"][0][1])
-    coupling_match.sort(key=lambda x: x[0])
-
-    #place cnots on the matched edges
-    while len(coupling_match) > 0 and len(fcnots) > 0:
-
-        edge = coupling_match.pop()
-        cnot = fcnots.pop()
-
-        #which architecture qubits does the edge correspond to?
-        edge1 = coupling_object["coupling"].index_to_qubit[edge[0]][1]
-        edge2 = coupling_object["coupling"].index_to_qubit[edge[1]][1]
-
-        #which circuit qubits are in the cnot?
-        cnot_q1, cnot_q2 = get_cnot_qubits(cnot)
-
-        #place cnot on edge
-        current_positions[cnot_q1] = edge1
-        current_positions[cnot_q2] = edge2
-
-        #remove from collections
-        all_architecture_qubits.remove(edge1)
-        all_architecture_qubits.remove(edge2)
-        all_circuit_qubits.remove(cnot_q1)
-        all_circuit_qubits.remove(cnot_q2)
-
-
-    #at this point collections should have same lengths
-    for i in range(len(all_circuit_qubits)):
-        current_positions[all_circuit_qubits[i]] = all_architecture_qubits[i]
-
-    current_who_at_index.update({v: k for k, v in current_positions.items()})
 
 
 def save_first_swaps(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit):
@@ -590,37 +539,40 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
                 qubit_node_index2 = get_coupling_node_idx(qub2, coupling_object["coupling"], current_positions)
 
 
-
+                '''
+                    A Look-ahead/behind to see which edges were/will be used and to go towards them
+                    Not used
+                '''
                 #get the next cnots and check use their coordinates to find the next edge
                 next_nodes = []
-                ni_index = nodes_collection.index(gate)
-                #use 3 cnots
-                for ni in range(6):
-                    ni_index -= 1
-                    if ni_index == -1:  # len(nodes_collection):
-                        break
-
-                    ni_id = nodes_collection[ni_index]
-                    ni_op = dag_circuit.multi_graph.node[ni_id]
-                    while ni_op["name"] not in ["cx", "CX"]:
-                        ni_index -= 1
-                        if ni_index == 0:#len(nodes_collection):
-                            break
-                        ni_id = nodes_collection[ni_index]
-                        ni_op = dag_circuit.multi_graph.node[ni_id]
-
-                    if ni_index == 0:#len(nodes_collection):
-                        break
-
-                    t_ni_op = translate_op_to_coupling_map(ni_op, current_positions)
-
-                    ni_q1, ni_q2 = get_cnot_qubits(t_ni_op)
-                    ni_q1_i = get_coupling_node_idx(ni_q1, coupling_object["coupling"], current_positions)
-                    ni_q2_i = get_coupling_node_idx(ni_q2, coupling_object["coupling"], current_positions)
-                    if ni_q1_i not in next_nodes and ni_q1_i not in [qubit_node_index1, qubit_node_index2]:
-                        next_nodes.append(ni_q1_i)
-                    if ni_q2_i not in next_nodes and ni_q2_i not in [qubit_node_index1, qubit_node_index2]:
-                        next_nodes.append(ni_q2_i)
+                # ni_index = nodes_collection.index(gate)
+                # #use 3 cnots
+                # for ni in range(0):
+                #     ni_index -= 1
+                #     if ni_index == -1:  # len(nodes_collection):
+                #         break
+                #
+                #     ni_id = nodes_collection[ni_index]
+                #     ni_op = dag_circuit.multi_graph.node[ni_id]
+                #     while ni_op["name"] not in ["cx", "CX"]:
+                #         ni_index -= 1
+                #         if ni_index == 0:#len(nodes_collection):
+                #             break
+                #         ni_id = nodes_collection[ni_index]
+                #         ni_op = dag_circuit.multi_graph.node[ni_id]
+                #
+                #     if ni_index == 0:#len(nodes_collection):
+                #         break
+                #
+                #     t_ni_op = translate_op_to_coupling_map(ni_op, current_positions)
+                #
+                #     ni_q1, ni_q2 = get_cnot_qubits(t_ni_op)
+                #     ni_q1_i = get_coupling_node_idx(ni_q1, coupling_object["coupling"], current_positions)
+                #     ni_q2_i = get_coupling_node_idx(ni_q2, coupling_object["coupling"], current_positions)
+                #     if ni_q1_i not in next_nodes and ni_q1_i not in [qubit_node_index1, qubit_node_index2]:
+                #         next_nodes.append(ni_q1_i)
+                #     if ni_q2_i not in next_nodes and ni_q2_i not in [qubit_node_index1, qubit_node_index2]:
+                #         next_nodes.append(ni_q2_i)
 
                 # Compute the edgee index where the qubits could be moved
                 coupling_edge_idx = heuristic_choose_coupling_edge_idx(qubit_node_index1,
@@ -792,9 +744,9 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
         #     tmp_cost += 0.05 * f_idx * coupling_object["coupling_dist"][node][edge2]
         #     f_idx -= 1
 
-        # '''
-        #     A kind of preference heuristic: prefer edges with the direction of the cnot to execute
-        # '''
+        '''
+            A kind of preference heuristic: prefer edges with the direction of the cnot to execute
+        '''
         # if coupling_object["coupling_dist"][edge1][edge2] == 14:#TODO: disabled in the add_reverse_edges
         #     tmp_cost *= 1.1
 
