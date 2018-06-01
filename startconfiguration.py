@@ -1,125 +1,36 @@
 from challenge_evaluation import qasm_to_dag_circuit
 import networkx as nx
 import math
-import operator
-
-
-def sum_chain(chain, order):
-    sumx = 0
-
-    prev = order[chain[0]]
-    for cd in chain[1:]:
-        sumx += abs(order[cd] - prev - 1)
-        prev = order[cd]
-
-    return sumx
-
-
-# def update_dictionary(dictionary, ckey):
-#     if ckey not in dictionary:
-#         new_name = dictionary["total"]
-#         dictionary[ckey] = new_name
-#         # dictionary[new_name] = ckey
-#
-#         dictionary["total"] += 1
-#
-#         # print(ckey, "is", new_name)
-#
-#
-# def complete_dictionary(dictionary, maxnr):
-#     for di in range(maxnr):
-#         update_dictionary(dictionary, di)
-#
-#
-# def get_dictionary_value(dictionary, key):
-#     ret = key
-#
-#     if key in dictionary:
-#         ret = dictionary[key]
-#
-#     return ret
-#
-#
-# def get_new_qubit_names(dictionary, ckey, chain):
-#     update_dictionary(dictionary, ckey)
-#
-#     for cd in chain:
-#         update_dictionary(dictionary, cd)
-#
-#
-# def replace_qubit_names(dictionary, chains):
-#     new_chains = {}
-#
-#     for chaink in chains:
-#         name = get_dictionary_value(dictionary, chaink)
-#         new_chains[name] = []
-#
-#         for cv in chains[chaink]:
-#             value = get_dictionary_value(dictionary, cv)
-#             new_chains[name].append(value)
-#
-#     return new_chains
-#
-#
-# def initialise_chains(nr_qubits):
-#     ret = {}
-#     for qi in range(nr_qubits):
-#         ret[qi] = [qi]
-#     return ret
-
-
-# def analyse_chain(chain, order):
-#     frequency = {}
-#     for ci in chain[1:]:
-#         if order[ci] not in frequency:
-#             frequency[order[ci]] = 0
-#         frequency[order[ci]] += 1
-#
-#     sumc = sum_chain(chain, order)
-#
-#     frequency_list = sorted(frequency.items(), key=operator.itemgetter(1), reverse=True)
-#
-#     return {"name": order[chain[0]], "sum": sumc, "freq": frequency_list}
-#
-#
-# def analyse_chains(chains_local, order):
-#     analysis = []
-#
-#     for ci in chains_local:
-#         analysis.append(analyse_chain(chains_local[ci], order))
-#
-#     analysis.sort(key=lambda x: x["sum"], reverse=True)
-#
-#     return analysis
-
-
-# def order_swap(order, ki, kj):
-#     # print("swap", ki, kj)
-#
-#     tmp = order[ki]
-#     order[ki] = order[kj]
-#     order[kj] = tmp
 
 
 def eval_cx_collection(cx_collection, order, limit, attenuate=False):
     sum_eval = 0
 
     t = 0
+    skipped = 0
     for tu in cx_collection:
         c1 = order[tu[0]]
         c2 = order[tu[1]]
 
         if c1 > limit or c2 > limit:
+            skipped += 1
             continue
 
-        part = abs(c1 - c2)
+        part1 = abs(c1 - c2)
         if attenuate:
+            #later changes in the layout should not affect
+            #the beginning of the circuit
             factor = t/len(cx_collection)
-            part *= 1-factor
-
-        sum_eval += part
+            part1 *= (1 - factor)
+        sum_eval += part1
 
         t += 1
+
+    if attenuate:
+        # each additionally considered qubit should enable
+        # as many CNOTs as possible
+        # if not, penalise the cost function
+        sum_eval += skipped * 200 * len(order)
 
     return sum_eval
 
@@ -128,7 +39,7 @@ def eval_cx_collection(cx_collection, order, limit, attenuate=False):
 '''
 def cuthill_order(dag_circuit):
     # qasm = ""
-    # with open("./circuits/random1_n20_d20.qasm", "r") as f:
+    # with open("./circuits/random0_n20_d20.qasm", "r") as f:
     #     qasm = f.read()
     #
     # dag_circuit = qasm_to_dag_circuit(qasm)
@@ -166,7 +77,7 @@ def cuthill_order(dag_circuit):
     parameter_max_depth = nrq
     #the first number_of_qubits * this factor the search maximises the cost
     #afterwards it minimises it
-    parameter_qubit_increase_factor = 1.4
+    parameter_qubit_increase_factor = nrq + 1#1.4
 
     order = [math.inf for x in order]
     for node_index in range(1, nrq):
@@ -223,7 +134,7 @@ def cuthill_order(dag_circuit):
                 order[qubit] = limit
 
                 prev_sum = options_tree.node[prev_leaf]["cost"]
-                sume = eval_cx_collection(cx_collection, order, limit)
+                sume = eval_cx_collection(cx_collection, order, limit, True)
 
                 # print("check", qubit, "tmp sum", sume, "order", order)
 
@@ -236,7 +147,7 @@ def cuthill_order(dag_circuit):
                         hold_sum = sume
                         local_minimas.clear()
                         local_minimas.append(qubit)
-                    elif sume == hold_sum and len(local_minimas) < parameter_max_children:
+                    elif sume <= hold_sum and len(local_minimas) < parameter_max_children:
                         local_minimas.append(qubit)
 
                 # reset placement
@@ -269,139 +180,6 @@ def cuthill_order(dag_circuit):
     return order
 
 
-    # qasm = ""
-    # with open("./circuits/random1_n20_d20.qasm", "r") as f:
-    #     qasm = f.read()
-    #
-    # dag_circuit = qasm_to_dag_circuit(qasm)
-    # nrq = dag_circuit.width()
-    #
-    # # qpic_commands = []
-    # # for i in range(nrq):
-    # #     wc = "q%d W" % i
-    # #     qpic_commands.append(wc)
-    # #     print(wc)
-    #
-    # chains = initialise_chains(nrq)
-    #
-    # nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
-    # for node in nodes_collection:
-    #     gate = dag_circuit.multi_graph.nodes[node]
-    #     if gate["name"] not in ["cx"]:
-    #         continue
-    #
-    #     q1 = int(gate["qargs"][0][1])
-    #     q2 = int(gate["qargs"][1][1])
-    #
-    #     chains[q1].append(q2)
-    #     # chains[q2].append(q1)
-    #
-    #     # cx = "q%d +q%d"%(q1,q2)
-    #     # qpic_commands.append(cx)
-    #     # print(cx)
-    #
-    #
-    # order = list(range(nrq))
-    #
-    # lastsum = math.inf
-    # for tt in range(1):
-    #     analysis_res = analyse_chains(chains, order)
-    #
-    #     evsum = sum(item['sum'] for item in analysis_res)
-    #     print("evsum", evsum)
-    #
-    #     # if evsum <= lastsum:
-    #     #     lastsum = evsum
-    #     # else:
-    #     #     break
-    #
-    #     # for x in range(len(analysis_res)):
-    #     #     order[analysis_res[x]["name"]] = x
-    #
-    #     # xk = 0
-    #     # swapped = []
-    #     # for x in chains[order[analysis_res[0]["name"]]]:
-    #     #     if x not in swapped:
-    #     #         order_swap(order, x, xk)
-    #     #         xk += 1
-    #     #         swapped.append(x)
-    #
-    #
-    #
-    # print(order)
-    # return order
-    #
-    #
-    #
-    # freq_matrix = []
-    # for ri in range(nrq):
-    #     freq_matrix.append([])
-    #     for ri2 in range(nrq):
-    #         freq_matrix[ri].append(0)
-    #
-    # for res in analysis_res:
-    #     for rf in res["freq"]:
-    #         freq_matrix[res["name"]][rf[0]] = rf[1]
-    #
-    # # for line in freq_matrix:
-    # #     print(line)
-    #
-    # # order = list(range(nrq))
-    #
-    # # for tt in range(1):
-    # #     for i in range(len(freq_matrix)):
-    # #         j = i
-    # #         while j < len(freq_matrix):
-    # #             k = j + 1
-    # #             while k < len(freq_matrix) - 1:
-    # #                 dist1 = freq_matrix[j][k] * abs(j-k)
-    # #                 dist2 = freq_matrix[j][k+1] * abs(j-k-1)
-    # #
-    # #                 # dist1 = freq_matrix[j][k] * abs(order[j]-order[k])
-    # #                 # dist2 = freq_matrix[j][k+1] * abs(order[j]-order[k-1])
-    # #
-    # #                 # if freq_matrix[j][k] < freq_matrix[j][k+1]:
-    # #                 if dist1 < dist2:
-    # #                     # swap k/k+1
-    # #
-    # #                     print("swap", k, k+1)
-    # #                     tmp = freq_matrix[j][k+1]
-    # #                     freq_matrix[j][k + 1] = freq_matrix[j][k]
-    # #                     freq_matrix[j][k] = tmp
-    # #
-    # #                     tmp = order[k+1]
-    # #                     order[k+1] = order[k]
-    # #                     order[k] = tmp
-    # #                 k += 1
-    # #             j += 1
-    #
-    # # print("------")
-    # # for line in freq_matrix:
-    # #     print(line)
-    #
-    # print(order)
-    #
-    # return order
-    #
-    # # from scipy.sparse.csgraph import reverse_cuthill_mckee
-    # # from scipy.sparse import csr_matrix
-    # # import numpy as np
-    # #
-    # # G_dense = np.array(freq_matrix)
-    # # G_sparse = csr_matrix(G_dense)
-    # # print("**********")
-    # # print(G_sparse.A)
-    # #
-    # # perm = reverse_cuthill_mckee(G_sparse, True)
-    # # # print("--------")
-    # # # print(perm)
-    # #
-    # # # x = G_sparse[np.ix_(perm, perm)].A
-    # # # print(x)
-    # #
-    # # return perm
-
-
 def evaluate_leafs(all_leafs, options_tree):
     minnode = -1
     mincost = math.inf
@@ -409,8 +187,6 @@ def evaluate_leafs(all_leafs, options_tree):
         if options_tree.node[nd]["cost"] < mincost:
             mincost = options_tree.node[nd]["cost"]
             minnode = nd
-
-    # print("MINNODE", minnode, mincost)
 
     return minnode, mincost
 

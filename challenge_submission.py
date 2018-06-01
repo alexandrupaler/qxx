@@ -16,9 +16,6 @@
 
 """
 ---------------> please fill out this section <---------------
-v.2 == submitted after deadline just to solve two bugs which had a huge effect (very small changes to prev version are visible with diff)
- It was important to submit a script that generates correct circuits. Thus, we understand that it may not qualify for the competition, but we would greatly appreciate if it would qualify for being included in the official benchmark results.
-
 Your Name : Alexandru Paler , Alwin Zulehner, Robert Wille
 
 Your E-Mail : alexandru.paler@jku.at
@@ -27,32 +24,30 @@ Description of the algorithm : K7M
 
 - How does the algorithm work?
 
-Compilation speed and straightforward, efficient heuristics are the goals of K7M. The algorithmic design started from a clear formulation of the exact solution, which was based on backtracking. Local optimisations were preferred to global ones, and therefore the employed heuristics are of the type "minimise a cost function given as few details as possible about the search space". The problem formulation enables the implementation of modular heuristics: pre- and post-processing, computing the next algorithmic step etc0 (more details will be available on arxiv). Briefly, the problem is split into two sub-problems: 1) find a cost-efficient placement of circuit qubits to architecture qubits; 2) implement using as few SWAPs as possible the CNOTs from the circuit (place CNOT on one of the edges of the coupling graph). Both problems are combinatorial optimisation problems, but whose solution heuristics are expressed using pathfinding similar methods.
+The main objectives of K7M are compilation speed and scalability so that the solution is also applicable to possible future generations of QX which may cover more qubits. This is accomplished by very fast heuristics which solve the problem while still generating results of reasonable costs. In order to derive those heuristics we first derived a formal description of how an exact solution (based on complete backtracking) would look like. As following such a scheme would obviously lead to runtime problems, afterwards the complete backtracking scheme was replaced by modular heuristics e.g. for pre- and post-processing, computing the next algorithmic step, etc. (more details will be available on arxiv soon). The modularity allows to extend/replace the heuristics proposed here later with more advanced ones.
 
-
-The intention is to use a complete implementation of this algorithm (present version is not finished) to investigate the trade-offs between speed and efficiency. Currently, on the available test examples, using the very simple heuristics it achives on average 0.66x improvement compared to QISKit for a 33x speed-up. However, see correctness.
+For this particular implementation, local optimisations were preferred to global ones. The used heuristics are of the type "minimise a cost function given as few details as possible about the search space". This version tackles the compilation problem as two placement sub-problems: 1) determine a cost-efficient placement of circuit qubits to architecture qubits; 2) implement using as few SWAPs as possible the CNOTs from the circuit (place each CNOT on one of the edges of the coupling graph). For both sub-problems the solution heuristics are expressed using pathfinding similar methods.
 
 The current heuristics are:
-1) initial placement is not configured. It is assumed that qubit_i is on coupling graph node i
-[choose_initial_configuration]
-2) a Floyd Warshall is executed on the coupling graph in order to determine all the pairs of shortest paths
-lines 307-310
-3) each CNOT qubit pair is moved to the coupling graph edge that is reached with a minimum distance
-[heuristic_choose_coupling_edge_idx]
+1) The initial placement is chosen such that a global ordering of lines is minimised
+2) A Floyd Warshall algorithm is executed at the beginning on the coupling graph to determine all the pairs of shortest paths.
+3) A circuit is traversed in topological order, and each CNOT qubit pair is moved to the coupling graph edge that is reached within a minimum distance.
+4) CNOTs are cancelled on the fly during circuit compilation.
+5) Single qubit gates are simplified on the fly during circuit compilation. The resulting u3 gates are represented as rz.ry.rz matrices and decomposed into Euler angles
+
+Other heuristics have been implemented (but not activated in the current implementation):
+a) Clustering: choosing the coupling graph edge closest to previous ones where CNOTs were executed.
+b) Preferring to map circuit CNOTs on the direct edges of the graph (such that Hadamards are not introduced).
+Both heuristics improved the results for the grid architectures, but worsened for linear and circular architecture (See generality)
 
 - Did you use any previously published schemes? Cite relevant papers.
 No.
-
 - What packages did you use in your code and for what part of the algorithm?
-No package except the ones included by qiskit.
-
+None except the ones included by qiskit.
 - How general is your approach? Does it work for arbitrary coupling layouts (qubit number)?
-It should be general. See next note.
-
+The approach is general and is not depending on the circuit to be mapped, or the underlying architecture. It does not analyse the architecture graph and perform any specific heuristics to adapt to the circuit/architecture test instances.
 - Are there known situations when the algorithm fails?
-Not aware in v2.
-Previous comment was for v1: Yes. For the moment it passes the coupling map check, but it does not pass the correct_state_vector verification. The bug is assumed to be in the way indices between the coupling graph/coupling map/circuit are translated. However, this version of the implementation cannot be fixed on time, due to the deadline.
-
+Not aware of any such situations.
 ---------------> please fill out this section <---------------
 """
 
@@ -481,7 +476,6 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
         compiled_dag = dag_circuit
 
     coupling_edge_idx = 0
-    # last_gate_idx = compiled_dag.node_counter
 
     #make a list in order to allow forward iteration
     nodes_collection = list(nx.topological_sort(dag_circuit.multi_graph))
@@ -775,13 +769,6 @@ def translate_op_to_coupling_map(op, current_positions):
     for qa in op["qargs"]:
         x = current_positions[qa[1]]
         retop["qargs"].append(("q", x))
-
-    # retop["cargs"] = []
-    # for ca in op["cargs"]:
-    #     x = current_positions[ca[1]]
-    #     # if op["name"] in ["measure"]:
-    #     #     x = ca[1]
-    #     retop["cargs"].append(("c", x))
 
     retop["cargs"] = copy.deepcopy(op["cargs"])
 
