@@ -16,7 +16,7 @@
 
 """
 ---------------> please fill out this section <---------------
-Your Name : Alexandru Paler , Alwin Zulehner, Robert Wille
+Your Name : Alexandru Paler
 
 Your E-Mail : alexandru.paler@jku.at
 
@@ -32,7 +32,7 @@ The current heuristics are:
 1) The initial placement is chosen such that a global ordering of lines is minimised
 2) A Floyd Warshall algorithm is executed at the beginning on the coupling graph to determine all the pairs of shortest paths.
 3) A circuit is traversed in topological order, and each CNOT qubit pair is moved to the coupling graph edge that is reached within a minimum distance.
-4) CNOTs are cancelled on the fly during circuit compilation.
+4) CNOTs are canceled on the fly during circuit compilation.
 5) Single qubit gates are simplified on the fly during circuit compilation. The resulting u3 gates are represented as rz.ry.rz matrices and decomposed into Euler angles
 
 Other heuristics have been implemented (but not activated in the current implementation):

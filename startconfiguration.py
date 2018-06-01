@@ -60,8 +60,8 @@ def cuthill_order(dag_circuit):
 
         cx_collection.append((q1, q2))
 
-    sume = eval_cx_collection(cx_collection, order, nrq)
-    print("naive start:", sume)
+    # sume = eval_cx_collection(cx_collection, order, nrq)
+    # print("naive start:", sume)
 
     options_tree = nx.DiGraph()
     maximum_nr_node = 0
@@ -174,7 +174,7 @@ def cuthill_order(dag_circuit):
 
     set_partial_permutation(nrq, options_tree, order, minnode)
 
-    print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
+    # print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
     # print(order)
 
     return order
