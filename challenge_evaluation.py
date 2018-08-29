@@ -66,6 +66,14 @@ def score(compiler_function=None, backend = 'local_qiskit_simulator'):
     #TODO: Was 10
     ex_nr = 1  # examples to add per qubit number. maximum is 10
     test_circuit_filenames = {}
+
+    # The following two for loops are to test the circuits that failed at the Qiskit challenge
+    for ii in range(5):
+        test_circuit_filenames['circuits/qft_n16.qasm'] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+
+    for ii in range(5):
+        test_circuit_filenames['circuits/qft_n16_excitations.qasm'] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+
     for ii in range(ex_nr):
         test_circuit_filenames['circuits/random%d_n5_d5.qasm' % ii] = load_coupling(maps_q5[ii%len(maps_q5)])["coupling_map"]
     # for ii in range(ex_nr):

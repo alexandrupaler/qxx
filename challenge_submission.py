@@ -435,6 +435,7 @@ def save_first_swaps(coupling_map, coupling_object, current_positions, current_w
         edge_node_index1 = coupling_object["coupling_edges_list"][coupling_edge_idx][0]
         edge_node_index2 = coupling_object["coupling_edges_list"][coupling_edge_idx][1]
 
+
         if qubit_node_index1 != edge_node_index1:
             move_qubit_from_to(qubit_node_index1, edge_node_index1,
                                coupling_map, coupling_object, current_positions,
@@ -720,6 +721,7 @@ def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_ob
 
     for edge in coupling_object["coupling_edges_list"]:
         idx += 1
+
         edge1 = edge[0]
         edge2 = edge[1]
 
