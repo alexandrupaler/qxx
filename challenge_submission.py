@@ -67,6 +67,16 @@ from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
 operation_costs = {"swap": 34, "rev_cnot": 4, "ok": 0}
 
+
+def add_reverse_edges_and_weights_one(coupling):
+    # get all edges from coupling
+    edgs = copy.deepcopy(coupling.G.edges)
+    for edg in edgs:
+        coupling.G.remove_edge(*edg)
+        # 31.08.2018
+        coupling.G.add_edge(edg[0], edg[1], weight=1)
+        coupling.G.add_edge(edg[1], edg[0], weight=1)
+
 def add_reverse_edges_and_weights(coupling, gatecosts):
     # get all edges from coupling
     edgs = copy.deepcopy(coupling.G.edges)
@@ -104,9 +114,11 @@ def choose_initial_configuration(dag_circuit, coupling_object, random=False):
 
     from startconfiguration import cuthill_order
     # if nrq > 6:
-    y = cuthill_order(dag_circuit)
+    y = cuthill_order(dag_circuit, coupling_object)
     # else:
-    #     y = list(range(nrq))
+    # y = list(range(nrq))
+
+    #random = True
 
     import numpy
     x = numpy.random.permutation(nrq)
@@ -305,7 +317,7 @@ def qubit_graph(dag_circuit, negativeNodes=False):
 
     return qgraph
 
-def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
+def compiler_function_nlayout(dag_circuit, coupling_map=None, gate_costs=None):
     """
     Modify a DAGCircuit based on a gate cost function.
 
@@ -330,7 +342,52 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
         and has as low a gate_cost as possible.
     """
 
-    #update the costs
+    import copy
+    from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
+    from qiskit import qasm, unroll
+
+    initial_layout = {}
+
+    coupling = Coupling(coupling_map)
+
+    # paler 31.08.2018
+    # use heuristic to generate it
+
+    coupling_object = {"coupling": Coupling(coupling_map)}
+    add_reverse_edges_and_weights_one(coupling_object["coupling"])
+    coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(
+        coupling_object["coupling"].G, weight="weight")
+    coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
+
+    from startconfiguration import cuthill_order
+    y = cuthill_order(dag_circuit, coupling_object)
+    for i in range(len(y)):
+        initial_layout[('q', i)] = ('q', y[i])  # qubit i@i
+
+    print(initial_layout)
+    # end paler 31.08.2018
+
+    compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit), coupling, initial_layout,
+                                             trials=40, seed=gate_costs['seed'])
+
+    # Expand swaps
+    basis_gates = "u1,u2,u3,cx,id"  # QE target basis
+    program_node_circuit = qasm.Qasm(data=compiled_dag.qasm()).parse()
+    unroller_circuit = unroll.Unroller(program_node_circuit,
+                                       unroll.DAGBackend(
+                                           basis_gates.split(",")))
+    compiled_dag = unroller_circuit.execute()
+    # Change cx directions
+    compiled_dag = direction_mapper(compiled_dag, coupling)
+    # Simplify cx gates
+    cx_cancellation(compiled_dag)
+    # Simplify single qubit gates
+    compiled_dag = optimize_1q_gates(compiled_dag)
+    # Return the compiled dag circuit
+    return compiled_dag
+
+def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
+    # update the costs
     operation_costs["rev_cnot"] = 4 * gate_costs["u2"]
     operation_costs["swap"] = 3 * gate_costs["cx"] + 4
 
@@ -349,6 +406,9 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
         Current logical qubit position on physical qubits
     '''
     current_positions = choose_initial_configuration(dag_circuit, coupling_object, False)
+
+    print("current positions computed", current_positions)
+
     current_who_at_index = {v: k for k, v in current_positions.items()}
 
     '''

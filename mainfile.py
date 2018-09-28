@@ -1,5 +1,6 @@
 # Import your solution function
 from challenge_submission import compiler_function
+from challenge_submission import compiler_function_nlayout
 
 # Import submission evaluation and scoring functions
 from challenge_evaluation import evaluate, score, qasm_to_dag_circuit
@@ -22,7 +23,7 @@ gate_costs2 = {'id': 0, 'u1': 0, 'measure': 0, 'reset': 0, 'barrier': 0,
 
 if computeScore:
     if generateJSONFile:
-        myres = score(compiler_function, backend=backend)
+        myres = score(compiler_function_nlayout, backend=backend)
         print("Your compiler scored %6.5f x better \
         and was %6.5f x faster than the QISKit reference compiler." % myres)
 
@@ -30,7 +31,7 @@ if computeScore:
 
     # os.remove("run_once_results.json")
 
-    myres = score(compiler_function, backend = backend)
+    myres = score(compiler_function, backend=backend)
     print("Your compiler scored %6.5f x better \
         and was %6.5f x faster than the QISKit reference compiler." % myres)
 else:

@@ -39,12 +39,13 @@ from multiprocessing import Pool
 from qiskit.mapper._mappererror import MapperError
 from qiskit.tools.qi.qi import state_fidelity
 
-#paler
+# paler
 import json
 
 skipVerif = True
 
-def score(compiler_function=None, backend = 'local_qiskit_simulator'):
+
+def score(compiler_function=None, backend='local_qiskit_simulator'):
     """
     Scores a compiler function based on a selected set of circuits and layouts
     available in the two respective subfolders.
@@ -58,52 +59,94 @@ def score(compiler_function=None, backend = 'local_qiskit_simulator'):
         float : score, speed
     """
     # Load coupling maps
-    maps_q5 = ["circle_rand_q5","ibmqx2_q5","linear_rand_q5","ibmqx4_q5","linear_reg_q5"]
+    maps_q5 = ["circle_rand_q5", "ibmqx2_q5", "linear_rand_q5", "ibmqx4_q5", "linear_reg_q5"]
     maps_q16 = ["ibmqx3_q16", "linear_rand_q16", "rect_rand_q16", "rect_def_q16", "ibmqx5_q16"]
     maps_q20 = ["circle_reg_q20", "linear_rand_q20", "rect_rand_q20", "rect_def_q20", "rect_reg_q20"]
 
     # Load circuits files
-    #TODO: Was 10
+    # TODO: Was 10
     ex_nr = 1  # examples to add per qubit number. maximum is 10
     test_circuit_filenames = {}
 
-    # The following two for loops are to test the circuits that failed at the Qiskit challenge
-    for ii in range(5):
-        test_circuit_filenames['circuits/qft_n16.qasm'] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+    # # # The following two for loops are to test the circuits that failed at the Qiskit challenge
+    for ii in [0, 4]:
+        test_circuit_filenames['circuits/qft_n16.qasm$%d' % ii] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
 
-    for ii in range(5):
-        test_circuit_filenames['circuits/qft_n16_excitations.qasm'] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+    for ii in [0, 4]:
+        test_circuit_filenames['circuits/qubits_n16_excitations.qasm$%d' % ii] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
 
-    for ii in range(ex_nr):
-        test_circuit_filenames['circuits/random%d_n5_d5.qasm' % ii] = load_coupling(maps_q5[ii%len(maps_q5)])["coupling_map"]
+    for ii in [0, 4]:
+        test_circuit_filenames['circuits/random0_n16_d16.qasm$%d' % ii] = load_coupling(maps_q16[ii % len(maps_q16)])[
+            "coupling_map"]
+
+    for ii in [0, 4]:
+        test_circuit_filenames['circuits/random1_n16_d16.qasm$%d' % ii] = load_coupling(maps_q16[ii % len(maps_q16)])[
+            "coupling_map"]
+
     # for ii in range(ex_nr):
-    #     test_circuit_filenames['circuits/random%d_n16_d16.qasm' % ii] = load_coupling(maps_q16[ii%len(maps_q16)])["coupling_map"]
+    #     test_circuit_filenames['circuits/random%d_n5_d5.qasm' % ii] = load_coupling(maps_q5[ii%len(maps_q5)])["coupling_map"]
+
+    # for ii in range(ex_nr):
+    #     circname = 'circuits/random%d_n16_d16.qasm' % ii
+    #     mapname = maps_q16[ii%len(maps_q16)]
+    #     test_circuit_filenames[circname] = load_coupling(mapname)["coupling_map"]
+    #     print(circname, mapname)
+
     # for ii in range(ex_nr):
     #     test_circuit_filenames['circuits/random%d_n20_d20.qasm' % ii] = load_coupling(maps_q20[ii%len(maps_q20)])["coupling_map"]
 
     # Load example circuits and coupling maps
 
     test_circuits = {}
-    for filename, cmap in test_circuit_filenames.items():
+    for ofilename, cmap in test_circuit_filenames.items():
+
+        indexdollar = ofilename.find("$")
+        if indexdollar == -1:
+            indexdollar = len(ofilename)
+        filename = ofilename[0:indexdollar]
+
         with open(filename, 'r') as infile:
             qasm = infile.read()
-            test_circuits[filename] = {"qasm": qasm, "coupling_map": cmap}
-    res = evaluate(compiler_function, test_circuits, verbose=True, backend = backend)
-    res_scores=[]
-    for name in res:
-        if (res[name]["optimizer_time"] > 0) and res[name]["coupling_correct_optimized"]:
-            # only add the score if the QISKit reference compiler worked well
-            if (res[name]["reference_time"] > 0) and res[name]["coupling_correct_reference"]:
-                # both user and reference compiler gave the correct result without error
-                res_scores.append([res[name]["cost_optimized"]/res[name]["cost_reference"],res[name]["optimizer_time"]/res[name]["reference_time"]])
-        else:
-            # the user compiler had an error or did not produce the right quantum state
-            # this returns a value which is half as good as the reference
-            res_scores.append([2,2])
-    return (1./np.mean([ii[0] for ii in res_scores]), 1./np.mean([ii[1] for ii in res_scores]))
+            test_circuits[ofilename] = {"qasm": qasm, "coupling_map": cmap}
+
+    # seedrange = range(30)
+    seedrange = [19]
+
+    # val value signals that the something went wrong
+    val = (-0.5, -0.5)
+
+    for seedi in seedrange:
+
+        print("Run %d" % seedi)
+        # am modificat pentru a misca seed-ul in jos catre swap_mapper in intregul lant de evaluare
+        # res = evaluate(compiler_function, test_circuits, verbose=True, backend=backend, seed=19)
+
+        res = evaluate(compiler_function, test_circuits, verbose=True, backend=backend, seed=seedi)
+
+        res_scores = []
+        for name in res:
+            if (res[name]["optimizer_time"] > 0) and res[name]["coupling_correct_optimized"]:
+                # only add the score if the QISKit reference compiler worked well
+                if (res[name]["reference_time"] > 0) and res[name]["coupling_correct_reference"]:
+                    # both user and reference compiler gave the correct result without error
+                    res_scores.append([res[name]["cost_optimized"] / res[name]["cost_reference"],
+                                       res[name]["optimizer_time"] / res[name]["reference_time"]])
+            else:
+                # the user compiler had an error or did not produce the right quantum state
+                # this returns a value which is half as good as the reference
+                res_scores.append([2, 2])
+        val = (1. / np.mean([ii[0] for ii in res_scores]), 1. / np.mean([ii[1] for ii in res_scores]))
+
+        if not (len(seedrange) == 1 and seedi == 19):
+            print("Your compiler scored %6.5f x better \
+                and was %6.5f x faster than the QISKit reference compiler." % val)
+
+            os.rename("run_once_results.json", "run_once_results.json_%d" % seedi)
+
+    return val
 
 
-def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend = 'local_qiskit_simulator'):
+def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend='local_qiskit_simulator', seed=19):
     """
     Evaluates the given complier_function with the circuits in test_circuits
     and compares the output circuit and quantum state with the original and
@@ -153,18 +196,20 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
     basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
     gate_costs = {'id': 0, 'u1': 0, 'measure': 0, 'reset': 0, 'barrier': 0,
                   'u2': 1, 'u3': 1, 'U': 1,
-                  'cx': 10, 'CX': 10}
+                  'cx': 10, 'CX': 10,
+                  'seed': seed}  # pass the seed through gate costs
+
     # Results data structure
     results = {}
 
     fileJSONExists = False
-    #paler json
+    # paler json
     if os.path.isfile("run_once_results.json"):
         with open("run_once_results.json", "r") as f:
             fileJSONExists = True
             results = json.load(f)
             print("Paler: Loaded JSON")
-    #end paler json
+    # end paler json
 
 
     # Load QASM files and extract DAG circuits
@@ -183,7 +228,7 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
     # Only return results if a valid compiler function is provided
     if compiler_function is not None:
         # step through all the test circuits using multiprocessing
-        compile_jobs = [[name,circuit,0,compiler_function,gate_costs] for name, circuit in test_circuits.items()]
+        compile_jobs = [[name, circuit, 0, compiler_function, gate_costs] for name, circuit in test_circuits.items()]
         with Pool(len(compile_jobs)) as job:
             res_values_opt = job.map(_compile_circuits, compile_jobs)
         # stash the results in the respective dicts
@@ -191,8 +236,9 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
 
         for job in range(len(compile_jobs)):
             name = res_values_opt[job].pop("name")
-            test_circuits[name].update(res_values_opt[job].pop("circuit")) # remove the circuit from the results and store it
-            #results[name] = res_values_opt[job]
+            test_circuits[name].update(
+                res_values_opt[job].pop("circuit"))  # remove the circuit from the results and store it
+            # results[name] = res_values_opt[job]
             results[name].update(res_values_opt[job])
         # do the same for the reference compiler in qiskit if verbose == True
         # paler json
@@ -205,9 +251,9 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
             print("..... [compiled reference]")
             for job in range(len(compile_jobs)):
                 name = res_values[job].pop("name")
-                test_circuits[name].update(res_values[job].pop("circuit")) # remove the circuit from the results and store it
+                test_circuits[name].update(
+                    res_values[job].pop("circuit"))  # remove the circuit from the results and store it
                 results[name].update(res_values[job])
-
 
         # determine the final permutation of the qubits
         # this is done by analyzing the measurements on the qubits
@@ -217,7 +263,8 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
 
         for job in range(len(compile_jobs)):
             name = res_values[job].pop("name")
-            test_circuits[name].update(res_values[job].pop("circuit")) # remove the circuit from the results and store it
+            test_circuits[name].update(
+                res_values[job].pop("circuit"))  # remove the circuit from the results and store it
             results[name].update(res_values[job])
 
         # Compose qobj for simulation
@@ -227,11 +274,11 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
 
         # generate qobj for original circuit
         qobj_original = _compose_qobj("original", test_circuits,
-                                                      backend=backend,
-                                                      config=config,
-                                                      basis_gates=basis_gates,
-                                                      shots=1,
-                                                      seed=None)
+                                      backend=backend,
+                                      config=config,
+                                      basis_gates=basis_gates,
+                                      shots=1,
+                                      seed=None)
 
         # Compute original cost and check original coupling map
         if verbose and (not fileJSONExists):
@@ -263,11 +310,11 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
 
         # Generate qobj for optimized circuit
         qobj_optimized = _compose_qobj("optimized", test_circuits,
-                                                      backend=backend,
-                                                      config=config,
-                                                      basis_gates=basis_gates,
-                                                      shots=1,
-                                                      seed=None)
+                                       backend=backend,
+                                       config=config,
+                                       basis_gates=basis_gates,
+                                       shots=1,
+                                       seed=None)
 
         # Compute compiled circuit cost and check coupling map
         for circuit in qobj_optimized["circuits"]:
@@ -299,11 +346,11 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
         if verbose and (not fileJSONExists):
             # Generate qobj for reference circuit optimized by qiskit compiler
             qobj_reference = _compose_qobj("reference", test_circuits,
-                                                      backend=backend,
-                                                      config=config,
-                                                      basis_gates=basis_gates,
-                                                      shots=1,
-                                                      seed=None)
+                                           backend=backend,
+                                           config=config,
+                                           basis_gates=basis_gates,
+                                           shots=1,
+                                           seed=None)
 
             # Compute reference cost and check reference coupling map
             for circuit in qobj_reference["circuits"]:
@@ -324,11 +371,10 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
                 results[name]["cost_reference"] = cost
                 results[name]["coupling_correct_reference"] = coupling_map_passes
 
-            # Skip simulation of reference State to speed things up!
-            # time_start = time.process_time()
-            # res_reference = qp.run(qobj_reference, timeout=GLOBAL_TIMEOUT)
-            # results[name]["sim_time_ref"] = time.process_time() - time_start
-
+                # Skip simulation of reference State to speed things up!
+                # time_start = time.process_time()
+                # res_reference = qp.run(qobj_reference, timeout=GLOBAL_TIMEOUT)
+                # results[name]["sim_time_ref"] = time.process_time() - time_start
 
         # Check output quantum state of optimized circuit is correct in comparison to original
         for name in results.keys():
@@ -339,26 +385,26 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend 
                 continue
 
             data_original = res_original.get_data(name)
-            if test_circuits[name]["dag_optimized"]is not None:
+            if test_circuits[name]["dag_optimized"] is not None:
                 data_optimized = res_optimized.get_data(name)
                 correct = _compare_outputs(data_original, data_optimized, test_circuits[name]["perm_optimized"])
-                #paler transform np.bool_ to bool
+                # paler transform np.bool_ to bool
                 results[name]["state_correct_optimized"] = bool(correct)
 
                 print(name, bool(correct))
 
-                #skip verification
+                # skip verification
                 # results[name]["state_correct_optimized"] = True
             else:
                 results[name]["state_correct_optimized"] = False
-            # Skip verification of the reference State to speed things up!
-            # if verbose:
-            #     if test_circuits[name]["dag_reference"] is not None:
-            #         data_reference = res_reference.get_data(name)
-            #         correct = _compare_outputs(data_original, data_reference, test_circuits[name]["perm_reference"])
-            #         results[name]["state_correct_reference"] = correct
-            #     else:
-            #         results[name]["state_correct_reference"] = False
+                # Skip verification of the reference State to speed things up!
+                # if verbose:
+                #     if test_circuits[name]["dag_reference"] is not None:
+                #         data_reference = res_reference.get_data(name)
+                #         correct = _compare_outputs(data_original, data_reference, test_circuits[name]["perm_reference"])
+                #         results[name]["state_correct_reference"] = correct
+                #     else:
+                #         results[name]["state_correct_reference"] = False
 
     # paler json
     with open("run_once_results.json", "w") as f:
@@ -386,7 +432,7 @@ def qasm_to_dag_circuit(qasm_string, basis_gates='u1,u2,u3,cx,id'):
     return dag_circuit
 
 
-def get_layout(qubits = 5):
+def get_layout(qubits=5):
     # load a random layout for a specifed number or qubits
     # only layouts for 5, 16 and 20 qubits are stored
     from os import path, getcwd
@@ -394,7 +440,7 @@ def get_layout(qubits = 5):
     from numpy.random import rand
     filenames = glob(path.join(getcwd(), 'layouts', '*_q' + str(qubits) + '*'))
     if len(filenames) > 0:
-        file = filenames[round(rand()*len(filenames)-0.5)]
+        file = filenames[round(rand() * len(filenames) - 0.5)]
         return load_coupling(path.basename(file).split('.')[-2])["coupling_map"]
     else:
         return []
@@ -419,10 +465,11 @@ def load_coupling(name):
 
     """
     import json
-    with open("./layouts/"+name+".json", 'r') as infile:
+    with open("./layouts/" + name + ".json", 'r') as infile:
         temp = json.load(infile)
         temp["coupling_map"] = {int(ii): kk for ii, kk in temp["coupling_map"].items()}
         return temp
+
 
 def _compile_circuits(compile_args):
     name = compile_args[0]
@@ -479,6 +526,7 @@ def _compile_circuits(compile_args):
 
     return res_values
 
+
 def _prep_sim(sim_args):
     name = sim_args[0]
     circuit = sim_args[1]
@@ -514,13 +562,26 @@ def _prep_sim(sim_args):
     res_values["circuit"] = circuit
     return res_values
 
+
 def _qiskit_compiler(dag_circuit, coupling_map=None, gate_costs=None):
     import copy
     from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
-    from qiskit import qasm, unroll        
+    from qiskit import qasm, unroll
     initial_layout = None
     coupling = Coupling(coupling_map)
-    compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit), coupling, initial_layout, trials=40, seed=19)
+
+    # # paler 31.08.2018
+    # # use heuristic to generate it
+    # from startconfiguration import cuthill_order
+    # y = cuthill_order(dag_circuit)
+    # for i in range(len(y)):
+    #     initial_layout[i] = y[i]  # qubit i@i
+    # # end paler 31.08.2018
+
+    # compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit), coupling, initial_layout, trials=40, seed=19)
+    compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit), coupling, initial_layout,
+                                             trials=40, seed=gate_costs['seed'])
+
     # Expand swaps
     basis_gates = "u1,u2,u3,cx,id"  # QE target basis
     program_node_circuit = qasm.Qasm(data=compiled_dag.qasm()).parse()
@@ -541,14 +602,15 @@ def _qiskit_compiler(dag_circuit, coupling_map=None, gate_costs=None):
 def _get_perm(perm):
     # get the permutation indices for the compiled quantum state given the permutation
     n = len(perm)
-    res = np.arange(2**n)
-    for num_ind in range(2**n):
+    res = np.arange(2 ** n)
+    for num_ind in range(2 ** n):
         ss_orig = [digit for digit in bin(num_ind)[2:].zfill(n)]
         ss_final = ss_orig.copy()
         for ii in range(n):
-            ss_final[n-1-ii] = ss_orig[n-1-perm[ii]]
-        res[num_ind] = int(''.join(ss_final),2)
+            ss_final[n - 1 - ii] = ss_orig[n - 1 - perm[ii]]
+        res[num_ind] = int(''.join(ss_final), 2)
     return list(res)
+
 
 def _compare_outputs(data_original, data_compiled, permutation, threshold=ERROR_LIMIT):
     # compare the output states of the original and the compiled circuit
@@ -565,29 +627,29 @@ def _compare_outputs(data_original, data_compiled, permutation, threshold=ERROR_
         return False
     state = state[_get_perm(permutation)]
     fidelity = state_fidelity(target, state)
-    #print("fidelity = ", fidelity)
+    # print("fidelity = ", fidelity)
     return abs(fidelity - 1.0) < threshold
 
 
 def _compose_qobj(qobj_name, test_circuits,
-                   backend="local_qasm_simulator",
-                   config=None,
-                   basis_gates='u1,u2,u3,id,cx',
-                   shots=1,
-                   max_credits=3,
-                   seed=None):
-    qobj_out = {"id": qobj_name+"_test_circuits",
-                     "config": config,
-                     "circuits": []}
+                  backend="local_qasm_simulator",
+                  config=None,
+                  basis_gates='u1,u2,u3,id,cx',
+                  shots=1,
+                  max_credits=3,
+                  seed=None):
+    qobj_out = {"id": qobj_name + "_test_circuits",
+                "config": config,
+                "circuits": []}
 
     qobj_out["config"] = {"max_credits": max_credits,
-                               "backend": backend,
-                               "seed": seed,
-                               "shots": shots}
+                          "backend": backend,
+                          "seed": seed,
+                          "shots": shots}
 
     for name, circuit in test_circuits.items():
         # only add the job if there was no error in generating the circuit
-        if circuit["dag_"+qobj_name] is not None:
+        if circuit["dag_" + qobj_name] is not None:
             job = {}
             job["name"] = name
             # config parameters used by the runner
@@ -598,7 +660,7 @@ def _compose_qobj(qobj_name, test_circuits,
             job["config"]["seed"] = seed
 
             # Add circuit
-            dag_circuit = copy.deepcopy(circuit["dag_"+qobj_name])
+            dag_circuit = copy.deepcopy(circuit["dag_" + qobj_name])
             job["compiled_circuit"] = dag2json(dag_circuit,
                                                basis_gates=basis_gates)
             job["compiled_circuit_qasm"] = dag_circuit.qasm(qeflag=True)
