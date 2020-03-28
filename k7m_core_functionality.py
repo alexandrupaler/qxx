@@ -67,7 +67,6 @@ Not aware of any such situations.
 
 # Include any Python modules needed for your implementation here
 import networkx as nx
-import copy
 import math
 import sympy
 import collections
@@ -76,15 +75,13 @@ import collections
 #     optimize_1q_gates, Coupling
 # from qiskit import qasm, unroll
 
-from gatesignatures import add_signatures_to_circuit, get_unrolled_qasm
+from gatesignatures import add_signatures_to_circuit
 from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
 import copy
 # from qiskit.mapper import swap_mapper, direction_mapper,
 # cx_cancellation, optimize_1q_gates, Coupling
 # from qiskit import qasm, unroll
-
-from qiskit.transpiler.passes import CXCancellation, Optimize1qGates
 
 from qiskit.transpiler import CouplingMap
 
@@ -93,11 +90,6 @@ from qiskit.circuit.quantumregister import QuantumRegister
 from qiskit.circuit.classicalregister import ClassicalRegister
 
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.extensions.standard import SwapGate
-from qiskit.transpiler.basepasses import TransformationPass
-from qiskit.transpiler.exceptions import TranspilerError
-from qiskit.transpiler.layout import Layout
-from qiskit.dagcircuit import DAGNode
 
 operation_costs = {"swap": 34, "rev_cnot": 4, "ok": 0}
 
