@@ -1,19 +1,3 @@
-# -*- coding: utf-8 -*-
-
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# =============================================================================
-
 """
 ---------------> please fill out this section <---------------
 Your Name : Alexandru Paler
@@ -24,31 +8,61 @@ Description of the algorithm : K7M
 
 - How does the algorithm work?
 
-The main objectives of K7M are compilation speed and scalability so that the solution is also applicable to possible future generations of QX which may cover more qubits. This is accomplished by very fast heuristics which solve the problem while still generating results of reasonable costs. In order to derive those heuristics we first derived a formal description of how an exact solution (based on complete backtracking) would look like. As following such a scheme would obviously lead to runtime problems, afterwards the complete backtracking scheme was replaced by modular heuristics e.g. for pre- and post-processing, computing the next algorithmic step, etc. (more details will be available on arxiv soon). The modularity allows to extend/replace the heuristics proposed here later with more advanced ones.
+The main objectives of K7M are compilation speed and scalability so that the
+solution is also applicable to possible future generations of QX which
+may cover more qubits. This is accomplished by very fast heuristics which
+solve the problem while still generating results of reasonable costs. In order
+to derive those heuristics we first derived a formal description of how an exact
+solution (based on complete backtracking) would look like. As following such a
+scheme would obviously lead to runtime problems, afterwards the complete
+backtracking scheme was replaced by modular heuristics e.g. for pre- and
+post-processing, computing the next algorithmic step, etc. (more details will
+be available on arxiv soon). The modularity allows to extend/replace the
+heuristics proposed here later with more advanced ones.
 
-For this particular implementation, local optimisations were preferred to global ones. The used heuristics are of the type "minimise a cost function given as few details as possible about the search space". This version tackles the compilation problem as two placement sub-problems: 1) determine a cost-efficient placement of circuit qubits to architecture qubits; 2) implement using as few SWAPs as possible the CNOTs from the circuit (place each CNOT on one of the edges of the coupling graph). For both sub-problems the solution heuristics are expressed using pathfinding similar methods.
+For this particular implementation, local optimisations were preferred to
+global ones. The used heuristics are of the type "minimise a cost function
+given as few details as possible about the search space". This version
+tackles the compilation problem as two placement sub-problems: 1) determine
+a cost-efficient placement of circuit qubits to architecture qubits;
+2) implement using as few SWAPs as possible the CNOTs from the circuit
+(place each CNOT on one of the edges of the coupling graph). For both
+sub-problems the solution heuristics are expressed using pathfinding
+similar methods.
 
 The current heuristics are:
-1) The initial placement is chosen such that a global ordering of lines is minimised
-2) A Floyd Warshall algorithm is executed at the beginning on the coupling graph to determine all the pairs of shortest paths.
-3) A circuit is traversed in topological order, and each CNOT qubit pair is moved to the coupling graph edge that is reached within a minimum distance.
+1) The initial placement is chosen such that a global ordering of lines is
+minimised
+2) A Floyd Warshall algorithm is executed at the beginning on the coupling
+graph to determine all the pairs of shortest paths.
+3) A circuit is traversed in topological order, and each CNOT qubit pair is
+moved to the coupling graph edge that is reached within a minimum distance.
 4) CNOTs are canceled on the fly during circuit compilation.
-5) Single qubit gates are simplified on the fly during circuit compilation. The resulting u3 gates are represented as rz.ry.rz matrices and decomposed into Euler angles
+5) Single qubit gates are simplified on the fly during circuit compilation.
+The resulting u3 gates are represented as rz.ry.rz matrices and decomposed
+into Euler angles
 
-Other heuristics have been implemented (but not activated in the current implementation):
-a) Clustering: choosing the coupling graph edge closest to previous ones where CNOTs were executed.
-b) Preferring to map circuit CNOTs on the direct edges of the graph (such that Hadamards are not introduced).
-Both heuristics improved the results for the grid architectures, but worsened for linear and circular architecture (See generality)
+Other heuristics have been implemented (but not activated in the current
+ implementation):
+a) Clustering: choosing the coupling graph edge closest to previous ones
+where CNOTs were executed.
+b) Preferring to map circuit CNOTs on the direct edges of the graph
+(such that Hadamards are not introduced).
+Both heuristics improved the results for the grid architectures, but
+worsened for linear and circular architecture (See generality)
 
 - Did you use any previously published schemes? Cite relevant papers.
 No.
 - What packages did you use in your code and for what part of the algorithm?
 None except the ones included by qiskit.
-- How general is your approach? Does it work for arbitrary coupling layouts (qubit number)?
-The approach is general and is not depending on the circuit to be mapped, or the underlying architecture. It does not analyse the architecture graph and perform any specific heuristics to adapt to the circuit/architecture test instances.
+- How general is your approach? Does it work for arbitrary coupling layouts
+(qubit number)?
+The approach is general and is not depending on the circuit to be mapped,
+ or the underlying architecture. It does not analyse the architecture graph
+ and perform any specific heuristics to adapt to the circuit/architecture
+ test instances.
 - Are there known situations when the algorithm fails?
 Not aware of any such situations.
----------------> please fill out this section <---------------
 """
 
 # Include any Python modules needed for your implementation here
@@ -58,12 +72,30 @@ import math
 import sympy
 import collections
 
-from qiskit.dagcircuit import DAGCircuit
-from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
+# from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, \
+#     optimize_1q_gates, Coupling
 # from qiskit import qasm, unroll
 
 from gatesignatures import add_signatures_to_circuit, get_unrolled_qasm
 from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
+
+import copy
+# from qiskit.mapper import swap_mapper, direction_mapper,
+# cx_cancellation, optimize_1q_gates, Coupling
+# from qiskit import qasm, unroll
+
+from qiskit.transpiler.passes import CXCancellation, Optimize1qGates
+
+from qiskit.transpiler import CouplingMap
+
+
+from qiskit.circuit.quantumregister import QuantumRegister
+from qiskit.dagcircuit import DAGCircuit
+from qiskit.extensions.standard import SwapGate
+from qiskit.transpiler.basepasses import TransformationPass
+from qiskit.transpiler.exceptions import TranspilerError
+from qiskit.transpiler.layout import Layout
+from qiskit.dagcircuit import DAGNode
 
 operation_costs = {"swap": 34, "rev_cnot": 4, "ok": 0}
 
@@ -317,74 +349,73 @@ def qubit_graph(dag_circuit, negativeNodes=False):
 
     return qgraph
 
-def compiler_function_nlayout(dag_circuit, coupling_map=None, gate_costs=None):
-    """
-    Modify a DAGCircuit based on a gate cost function.
+# def compiler_function_nlayout(dag_circuit, coupling_map=None, gate_costs=None):
+#     """
+#     Modify a DAGCircuit based on a gate cost function.
+#
+#     Instructions:
+#         Your submission involves filling in the implementation
+#         of this function. The function takes as input a DAGCircuit
+#         object, which can be generated from a QASM file by using the
+#         function 'qasm_to_dag_circuit' from the included
+#         'submission_evaluation.py' module. For more information
+#         on the DAGCircuit object see the or QISKit documentation
+#         (eg. 'help(DAGCircuit)').
+#
+#     Args:
+#         dag_circuit (DAGCircuit): DAGCircuit object to be compiled.
+#         coupling_circuit (list): Coupling map for device topology.
+#                                  A coupling map of None corresponds an
+#                                  all-to-all connected topology.
+#         gate_costs (dict) : dictionary of gate names and costs.
+#
+#     Returns:
+#         A modified DAGCircuit object that satisfies an input coupling_map
+#         and has as low a gate_cost as possible.
+#     """
+#
+#     initial_layout = {}
+#
+#     # coupling = Coupling(coupling_map)
+#     coupling = CouplingMap(coupling_map)
+#
+#     coupling_object = {"coupling": CouplingMap(coupling_map)}
+#     add_reverse_edges_and_weights_one(coupling_object["coupling"])
+#     coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(
+#         coupling_object["coupling"].G, weight="weight")
+#     coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
+#
+#     """
+#         Compute an initial mapping of the qubits
+#     """
+#     from startconfiguration import cuthill_order
+#     y = cuthill_order(dag_circuit, coupling_object)
+#     for i in range(len(y)):
+#         initial_layout[('q', i)] = ('q', y[i])  # qubit i@i
+#
+#     print(initial_layout)
+#     # end paler 31.08.2018
+#
+#     compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit),
+#                                              coupling, initial_layout,
+#                                              trials=40, seed=gate_costs['seed'])
+#
+#     # Expand swaps
+#     basis_gates = "u1,u2,u3,cx,id"  # QE target basis
+#     program_node_circuit = qasm.Qasm(data=compiled_dag.qasm()).parse()
+#     unroller_circuit = unroll.Unroller(program_node_circuit,
+#                                        unroll.DAGBackend(
+#                                            basis_gates.split(",")))
+#     compiled_dag = unroller_circuit.execute()
+#     # Change cx directions
+#     compiled_dag = direction_mapper(compiled_dag, coupling)
+#     # Simplify cx gates
+#     compiled_dag = CXCancellation().run(compiled_dag)
+#     # Simplify single qubit gates
+#     compiled_dag = Optimize1qGates().run(compiled_dag)
+#     # Return the compiled dag circuit
+#     return compiled_dag
 
-    Instructions:
-        Your submission involves filling in the implementation
-        of this function. The function takes as input a DAGCircuit
-        object, which can be generated from a QASM file by using the
-        function 'qasm_to_dag_circuit' from the included 
-        'submission_evaluation.py' module. For more information
-        on the DAGCircuit object see the or QISKit documentation
-        (eg. 'help(DAGCircuit)').
-
-    Args:
-        dag_circuit (DAGCircuit): DAGCircuit object to be compiled.
-        coupling_circuit (list): Coupling map for device topology.
-                                 A coupling map of None corresponds an
-                                 all-to-all connected topology.
-        gate_costs (dict) : dictionary of gate names and costs.
-
-    Returns:
-        A modified DAGCircuit object that satisfies an input coupling_map
-        and has as low a gate_cost as possible.
-    """
-
-    import copy
-    from qiskit.mapper import swap_mapper, direction_mapper, cx_cancellation, optimize_1q_gates, Coupling
-    from qiskit import qasm, unroll
-
-    initial_layout = {}
-
-    coupling = Coupling(coupling_map)
-
-    # paler 31.08.2018
-    # use heuristic to generate it
-
-    coupling_object = {"coupling": Coupling(coupling_map)}
-    add_reverse_edges_and_weights_one(coupling_object["coupling"])
-    coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(
-        coupling_object["coupling"].G, weight="weight")
-    coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
-
-    from startconfiguration import cuthill_order
-    y = cuthill_order(dag_circuit, coupling_object)
-    for i in range(len(y)):
-        initial_layout[('q', i)] = ('q', y[i])  # qubit i@i
-
-    print(initial_layout)
-    # end paler 31.08.2018
-
-    compiled_dag, final_layout = swap_mapper(copy.deepcopy(dag_circuit), coupling, initial_layout,
-                                             trials=40, seed=gate_costs['seed'])
-
-    # Expand swaps
-    basis_gates = "u1,u2,u3,cx,id"  # QE target basis
-    program_node_circuit = qasm.Qasm(data=compiled_dag.qasm()).parse()
-    unroller_circuit = unroll.Unroller(program_node_circuit,
-                                       unroll.DAGBackend(
-                                           basis_gates.split(",")))
-    compiled_dag = unroller_circuit.execute()
-    # Change cx directions
-    compiled_dag = direction_mapper(compiled_dag, coupling)
-    # Simplify cx gates
-    cx_cancellation(compiled_dag)
-    # Simplify single qubit gates
-    compiled_dag = optimize_1q_gates(compiled_dag)
-    # Return the compiled dag circuit
-    return compiled_dag
 
 def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     # update the costs
@@ -395,9 +426,10 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
         Prepare the Floyd Warshall graph and weight matrix
         Coupling related objects
     '''
-    # How do you find out the number of qubits in the architecture if coupling_map is None?
+    # How do you find out the number of qubits in the architecture
+    # if coupling_map is None?
 
-    coupling_object = {"coupling": Coupling(coupling_map)}
+    coupling_object = {"coupling": CouplingMap(coupling_map)}
     add_reverse_edges_and_weights(coupling_object["coupling"], gate_costs)
     coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(coupling_object["coupling"].G, weight="weight")
     coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
@@ -462,15 +494,6 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
     current_who_at_index = {v: k for k, v in collect_config[min_current_positions][1].items()}
     compiled_dag, backtracking_stack = find_solution(coupling_map, coupling_object, collect_config[min_current_positions][1],
                                                 current_who_at_index, dag_circuit, False)
-
-    # compiled_dag = optimize_1q_gates(compiled_dag)
-    # cx_cancellation(compiled_dag)
-    #
-    # print("--------- Check ------------")
-    # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(compiled_dag, coupling_map, gate_costs)
-    # print(tmp_solution_cost, mapped_ok)
-    # if mapped_ok:
-    #     print("Seems OK")
 
     return compiled_dag
 
@@ -768,7 +791,8 @@ def move_qubit_from_to(qubit_node_index1, edge_node_index1, coupling_map, coupli
 
 def heuristic_choose_coupling_edge_idx(qub1_to_index, qub2_to_index, coupling_object, next_nodes=[]):
     """
-        Heuristic: which coupling edge generates the smallest cost given qub1 and qub2 positions
+        Heuristic: which coupling edge generates the smallest
+        cost given qub1 and qub2 positions
         Returns: the total cost of moving qub1 and qub2 and interacting them
     """
     # to debug
