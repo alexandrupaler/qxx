@@ -415,22 +415,6 @@ def evaluate(compiler_function=None, test_circuits=None, verbose=False, backend=
     return results
 
 
-def qasm_to_dag_circuit(qasm_string, basis_gates='u1,u2,u3,cx,id'):
-    """
-    Convert an OPENQASM text string to a DAGCircuit.
-
-    Args:
-        qasm_string (str): OPENQASM2.0 circuit string.
-        basis_gates (str): QASM gates to unroll circuit to.
-
-    Returns:
-        A DAGCircuit object of the unrolled QASM circuit.
-    """
-    program_node_circuit = qiskit.qasm.Qasm(data=qasm_string).parse()
-    dag_circuit = Unroller(program_node_circuit,
-                           DAGBackend(basis_gates.split(","))).execute()
-    return dag_circuit
-
 
 def get_layout(qubits=5):
     # load a random layout for a specifed number or qubits

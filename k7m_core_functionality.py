@@ -90,6 +90,8 @@ from qiskit.transpiler import CouplingMap
 
 
 from qiskit.circuit.quantumregister import QuantumRegister
+from qiskit.circuit.classicalregister import ClassicalRegister
+
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.extensions.standard import SwapGate
 from qiskit.transpiler.basepasses import TransformationPass
@@ -102,27 +104,27 @@ operation_costs = {"swap": 34, "rev_cnot": 4, "ok": 0}
 
 def add_reverse_edges_and_weights_one(coupling):
     # get all edges from coupling
-    edgs = copy.deepcopy(coupling.G.edges)
+    edgs = copy.deepcopy(coupling.graph.edges)
     for edg in edgs:
-        coupling.G.remove_edge(*edg)
+        coupling.graph.remove_edge(*edg)
         # 31.08.2018
-        coupling.G.add_edge(edg[0], edg[1], weight=1)
-        coupling.G.add_edge(edg[1], edg[0], weight=1)
+        coupling.graph.add_edge(edg[0], edg[1], weight=1)
+        coupling.graph.add_edge(edg[1], edg[0], weight=1)
 
 def add_reverse_edges_and_weights(coupling, gatecosts):
     # get all edges from coupling
-    edgs = copy.deepcopy(coupling.G.edges)
+    edgs = copy.deepcopy(coupling.graph.edges)
     for edg in edgs:
         # print(edg)
-        coupling.G.remove_edge(*edg)
+        coupling.graph.remove_edge(*edg)
 
         # the direct edge gets a weight
-        coupling.G.add_edge(edg[0], edg[1], weight=gatecosts["cx"])
+        coupling.graph.add_edge(edg[0], edg[1], weight=gatecosts["cx"])
 
         # the inverse edge
         # CNOT + four Hadamards for the reverse
-        # coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
-        coupling.G.add_edge(edg[1], edg[0], weight=gatecosts["cx"])
+        # coupling.graph.add_edge(edg[1], edg[0], weight=gatecosts["cx"] + 4*gatecosts["u2"])
+        coupling.graph.add_edge(edg[1], edg[0], weight=gatecosts["cx"])
 
 
 
@@ -142,7 +144,7 @@ def choose_initial_configuration(dag_circuit, coupling_object, random=False):
     """
     configuration = {}
 
-    nrq = get_dag_nr_qubits(dag_circuit)
+    nrq = dag_circuit.num_qubits()
 
     from startconfiguration import cuthill_order
     # if nrq > 6:
@@ -431,8 +433,15 @@ def compiler_function(dag_circuit, coupling_map=None, gate_costs=None):
 
     coupling_object = {"coupling": CouplingMap(coupling_map)}
     add_reverse_edges_and_weights(coupling_object["coupling"], gate_costs)
-    coupling_object["coupling_pred"], coupling_object["coupling_dist"] = nx.floyd_warshall_predecessor_and_distance(coupling_object["coupling"].G, weight="weight")
-    coupling_object["coupling_edges_list"] = [e for e in coupling_object["coupling"].G.edges()]
+
+    coupling_object["coupling_pred"], coupling_object["coupling_dist"] = \
+        nx.floyd_warshall_predecessor_and_distance(
+            coupling_object["coupling"].graph,
+            weight="weight")
+
+    coupling_object["coupling_edges_list"] = [
+        e for e in coupling_object["coupling"].graph.edges()
+    ]
 
     '''
         Current logical qubit position on physical qubits
@@ -544,7 +553,10 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
     :return:
     '''
 
-    save_first_swaps(coupling_map, coupling_object, current_positions, current_who_at_index, dag_circuit)
+    save_first_swaps(coupling_map, coupling_object,
+                     current_positions,
+                     current_who_at_index,
+                     dag_circuit)
 
     # Simulate a stack
     backtracking_stack = []
@@ -580,9 +592,14 @@ def find_solution(coupling_map, coupling_object, current_positions, current_who_
             '''
             if not no_circuit:
                 if op["name"] in ["u1", "u2", "u3"]:
+                    # TODO: Not necessary. Was used here for speed purposes.
                     append_ops_to_dag(compiled_dag, [op])
                 else:
-                    compiled_dag.apply_operation_back(op["name"], op["qargs"], op["cargs"], op["params"], op["condition"])
+                    compiled_dag.apply_operation_back(op["name"],
+                                                      op["qargs"],
+                                                      op["cargs"],
+                                                      op["params"],
+                                                      op["condition"])
         else:
             '''
                 Found a CNOT:
@@ -847,6 +864,7 @@ def translate_op_to_coupling_map(op, current_positions):
     retop = {}
     retop["name"] = op["name"]
     retop["type"] = op["type"]
+
     # TODO: deepcopy needed?
     retop["params"] = copy.deepcopy(op["params"])
     retop["condition"] = copy.deepcopy(op["condition"])
@@ -865,8 +883,8 @@ def clone_dag_without_gates(dag_circuit):
     compiled_dag = DAGCircuit()
     compiled_dag.basis = copy.deepcopy(dag_circuit.basis)
     compiled_dag.gates = copy.deepcopy(dag_circuit.gates)
-    compiled_dag.add_qreg("q", get_dag_nr_qubits(dag_circuit))
-    compiled_dag.add_creg("c", get_dag_nr_qubits(dag_circuit))
+    compiled_dag.add_qreg(QuantumRegister(get_dag_nr_qubits(dag_circuit), "q"))
+    compiled_dag.add_creg(ClassicalRegister(get_dag_nr_qubits(dag_circuit), "c"))
     return compiled_dag
 
 

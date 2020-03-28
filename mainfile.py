@@ -1,6 +1,6 @@
 # Import your solution function
-from challenge_submission import compiler_function
-from challenge_submission import compiler_function_nlayout
+from k7m_core_functionality import compiler_function
+from k7m_core_functionality import compiler_function_nlayout
 
 # Import submission evaluation and scoring functions
 from challenge_evaluation import evaluate, score, qasm_to_dag_circuit

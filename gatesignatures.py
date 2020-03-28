@@ -1,8 +1,11 @@
 import sympy
 
 from qiskit.dagcircuit import DAGCircuit
-from qiskit import qasm, unroll
-from qiskit.qasm import _node as node
+from qiskit.transpiler.passes import Unroller
+from qiskit.qasm.qasm import Qasm
+
+# TODO clean imports
+import qiskit.qasm.node as node
 
 cx_data = {
     "opaque": False,
@@ -84,8 +87,8 @@ def get_unrolled_qasm(dag_circuit):
     # print(dag_circuit.qasm())
 
     basis_gates = "u1,u2,u3,cx,id"  # QE target basis
-    program_node_circuit = qasm.Qasm(data=dag_circuit.qasm()).parse()
-    unroller_circuit = unroll.Unroller(program_node_circuit,
+    program_node_circuit = Qasm(data=dag_circuit.qasm()).parse()
+    unroller_circuit = Unroller(program_node_circuit,
                             unroll.DAGBackend(
                             basis_gates.split(",")))
 

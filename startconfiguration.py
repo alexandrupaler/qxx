@@ -152,16 +152,23 @@ def cuthill_order(dag_circuit, coupling_object):
     #
     # the cnot collection is initialised to empty
     cx_collection = []
+
     # use qiskit topological sort
-    nodes_collection = nx.topological_sort(dag_circuit.multi_graph)
+    # nodes_collection = dag_circuit.topological_nodes()
     # each gate is transformed into a tuple of qubit indices
-    for node in nodes_collection:
-        gate = dag_circuit.multi_graph.nodes[node]
-        if gate["name"] not in ["cx"]:
+    for gate in dag_circuit.gate_nodes():
+        # gate = dag_circuit.multi_graph.nodes[node]
+        # gate = nodes_collection[node]
+
+        # if gate["name"] not in ["cx"]:
+        if gate.name not in ["cx"]:
             continue
 
-        q1 = int(gate["qargs"][0][1])
-        q2 = int(gate["qargs"][1][1])
+        # q1 = int(gate["qargs"][0][1])
+        # q2 = int(gate["qargs"][1][1])
+        #
+        q1 = int(gate.qargs[0][1])
+        q2 = int(gate.qargs[1][1])
 
         cx_collection.append((q1, q2))
 
@@ -250,8 +257,8 @@ def cuthill_order(dag_circuit, coupling_object):
             # if limit < nrq / parameter_qubit_increase_factor:
             #     hold_sum = - math.inf
 
-            leaf_ancestors = [options_tree.node[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
-            leaf_ancestors.append(options_tree.node[prev_leaf]["name"])
+            leaf_ancestors = [options_tree.nodes[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
+            leaf_ancestors.append(options_tree.nodes[prev_leaf]["name"])
 
             # Use all the qubits which are not predecessors of the current leaf
             for qubit in range(nrq):
@@ -263,7 +270,7 @@ def cuthill_order(dag_circuit, coupling_object):
                 order[qubit] = limit
 
                 # the cost of the leaf is stored in prev_sum
-                prev_sum = options_tree.node[prev_leaf]["cost"]
+                prev_sum = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
                 sume, skipped = eval_cx_collection(cx_collection, order, limit, coupling_object, True)
@@ -347,6 +354,7 @@ def evaluate_leafs(all_leafs, options_tree):
 
     return minnode, mincost
 
+
 def set_partial_permutation(limit, options_tree, order, prev_leaf):
     """
 
@@ -361,7 +369,7 @@ def set_partial_permutation(limit, options_tree, order, prev_leaf):
         position = limit - 1
 
     # this node is placed at the index position
-    order[options_tree.node[prev_leaf]["name"]] = position
+    order[options_tree.nodes[prev_leaf]["name"]] = position
 
     # save the prev_leaf index
     p_prev_leaf = prev_leaf
@@ -375,6 +383,6 @@ def set_partial_permutation(limit, options_tree, order, prev_leaf):
             # decrement position
             position -= 1
         # place current node at the lower position
-        order[options_tree.node[p_prev_leaf]["name"]] = position
+        order[options_tree.nodes[p_prev_leaf]["name"]] = position
 
 
