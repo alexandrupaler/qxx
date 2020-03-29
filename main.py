@@ -1,6 +1,6 @@
 import json
 
-from k7m_core_functionality import k7m_compiler_function
+from k7m_core_functionality import K7MCompiler
 
 basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
 
@@ -18,7 +18,8 @@ def main():
     from qiskit.converters import circuit_to_dag
 
     # Load the coupling map
-    name = "./layouts/circle_reg_q16.json"
+    # TODO: Test small circuits on large graphs. Was working before refactor.
+    name = "./layouts/circle_reg_q5.json"
     with open(name, 'r') as infile:
         temp = json.load(infile)
 
@@ -27,9 +28,11 @@ def main():
         for k in kk:
             coupling += [[int(ii), k]]
 
-    k7m_compiler_function(circuit_to_dag(circ),
-                          coupling_map=coupling,
-                          gate_costs=gate_costs)
+
+    k7m = K7MCompiler(coupling, gate_costs)
+    k7m.run(circuit_to_dag(circ))
+
+
 
 
 if __name__ == '__main__':

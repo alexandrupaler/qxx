@@ -13,7 +13,6 @@ from qiskit.transpiler import CouplingMap
 
 class CouplingObject:
     def __init__(self, coupling_map, gate_costs):
-        # print("Coupling Object")
 
         self.coupling_map = coupling_map
         self.coupling = CouplingMap(coupling_map)
@@ -118,7 +117,7 @@ class CouplingObject:
         #     # 31.08.2018
         #     self.coupling.graph.add_edge(edg[0], edg[1], weight=1)
         #     self.coupling.graph.add_edge(edg[1], edg[0], weight=1)
-        self.add_reverse_edges_and_weights({"cx": 1})
+        self.add_reverse_edges_and_weights(gatecosts = {"cx": 1})
 
 
     def add_reverse_edges_and_weights(self, gatecosts):
@@ -129,13 +128,13 @@ class CouplingObject:
             self.coupling.graph.remove_edge(*edg)
 
             # the direct edge gets a weight
-            self.coupling.graph.add_edge(edg[0], edg[1], weight=gatecosts["cx"])
+            self.coupling.graph.add_edge(edg[0], edg[1], weight = gatecosts["cx"])
 
             # the inverse edge
             # CNOT + four Hadamards for the reverse
             # coupling.graph.add_edge(edg[1], edg[0],
             # weight=gatecosts["cx"] + 4*gatecosts["u2"])
-            self.coupling.graph.add_edge(edg[1], edg[0], weight=gatecosts["cx"])
+            self.coupling.graph.add_edge(edg[1], edg[0], weight = gatecosts["cx"])
 
 
     def reconstruct_route(self, start_phys, stop_phys):
