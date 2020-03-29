@@ -1,5 +1,5 @@
 # Import your solution function
-from k7m_core_functionality import compiler_function
+from k7m_core_functionality import k7m_compiler_function
 from k7m_core_functionality import compiler_function_nlayout
 
 # Import submission evaluation and scoring functions
@@ -31,7 +31,7 @@ if computeScore:
 
     # os.remove("run_once_results.json")
 
-    myres = score(compiler_function, backend=backend)
+    myres = score(k7m_compiler_function, backend=backend)
     print("Your compiler scored %6.5f x better \
         and was %6.5f x faster than the QISKit reference compiler." % myres)
 else:
@@ -52,4 +52,4 @@ else:
     #     config = {}
     #     for i in range(5):
     #         config[i] = perm[i]
-    compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2)
+    k7m_compiler_function(qasm_to_dag_circuit(qasm), cm["coupling_map"], gate_costs2)

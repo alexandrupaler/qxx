@@ -1,6 +1,6 @@
 import json
 
-from k7m_core_functionality import compiler_function
+from k7m_core_functionality import k7m_compiler_function
 
 # gate_costs = {'id': 0, 'u1': 0, 'measure': 0, 'reset': 0, 'barrier': 0,
 #                   'u2': 1, 'u3': 1, 'U': 1,
@@ -31,9 +31,9 @@ def main():
         for k in kk:
             coupling += [[int(ii), k]]
 
-    compiler_function(circuit_to_dag(circ),
-                  coupling_map=coupling,
-                  gate_costs=gate_costs)
+    k7m_compiler_function(circuit_to_dag(circ),
+                          coupling_map=coupling,
+                          gate_costs=gate_costs)
 
 
 if __name__ == '__main__':

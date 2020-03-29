@@ -61,7 +61,8 @@ The resulting u3 gates are represented as rz.ry.rz matrices and decomposed
 into Euler angles.
 
 
-Some heuristics (for the moment disabled) worked best for grid layouts.
+Some heuristics (for the moment disabled) worked best for grid layouts
+(see heuristic_choose_coupling_edge_idx())
 a) Clustering: choosing the coupling graph edge closest to previous ones
 where CNOTs were executed.
 b) Preferring to map circuit CNOTs on the direct edges of the graph

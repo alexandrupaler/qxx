@@ -11,10 +11,10 @@ def get_distance_coupling(c1, c2, coupling_object):
     :return:
     """
 
-    idx1 = coupling_object["coupling"].qubits[("q", c1)]
-    idx2 = coupling_object["coupling"].qubits[("q", c2)]
+    idx1 = coupling_object.coupling.qubits[("q", c1)]
+    idx2 = coupling_object.coupling.qubits[("q", c2)]
 
-    dist = coupling_object["coupling_dist"][idx1][idx2]
+    dist = coupling_object.coupling_dist[idx1][idx2]
 
     return dist
 
@@ -33,13 +33,16 @@ def get_distance_offsets(c1, c2, offsets, coupling_object):
 
     # dist = abs(offsets[c1] + c1 - c2 - offsets[c2])
 
-    idx1 = coupling_object["coupling"].qubits[("q", c1)]
-    idx2 = coupling_object["coupling"].qubits[("q", c2)]
+    # idx1 = coupling_object["coupling"].qubits[("q", c1)]
+    # idx2 = coupling_object["coupling"].qubits[("q", c2)]
+
+    idx1 = coupling_object.coupling.physical_qubits[c1]
+    idx2 = coupling_object.coupling.physical_qubits[c2]
 
     minq = min(c1, c2)
     maxq = max(c1, c2)
 
-    dist = abs(coupling_object["coupling_dist"][idx1][idx2] - offsets[minq] - offsets[maxq])
+    dist = abs(coupling_object.coupling_dist[idx1][idx2] - offsets[minq] - offsets[maxq])
 
     if dist > 1:
         offsets[minq] += dist // 2 - 1
@@ -48,14 +51,22 @@ def get_distance_offsets(c1, c2, offsets, coupling_object):
     return dist
 
 
-def eval_cx_collection(cx_collection, order, limit, coupling_object, attenuate=False):
+def eval_cx_collection(cx_collection,
+                       order,
+                       limit,
+                       coupling_object,
+                       attenuate=False):
     """
-
-    :param cx_collection: list of tuples representing CNOT qubits; control/target does not matter
+    This is the heuristic cost function to evaluate the cost
+    for a mapping configuration
+    :param cx_collection: list of tuples representing CNOT qubits;
+    control/target does not matter
     :param order: permutation of circuit wires
-    :param limit: qubit index threshold to skip; gates that operate on qubits with index higher than limit are not considered
-    :param attenuate: Boolean - if later changes in the layout should not affect the beginning of the circuit
-    :return: evaluated cost of a ordering
+    :param limit: qubit index threshold to skip; gates that operate on qubits
+        with index higher than limit are not considered
+    :param attenuate: Boolean - if later changes in the layout
+    should not affect the beginning of the circuit
+    :return: evaluated cost of a mapping (ordering)
     """
     sum_eval = 0
 
@@ -93,6 +104,9 @@ def eval_cx_collection(cx_collection, order, limit, coupling_object, attenuate=F
 
         # this is a linear distance between the qubits
         # it does not take into consideration the architecture
+        """
+            TODO: Different types of distances
+        """
         # part1 = get_distance_linear(c1, c2)
         # part1 = get_distance_coupling(c1, c2, coupling_object)
         part1 = get_distance_offsets(c1, c2, offsets, coupling_object)
@@ -135,11 +149,30 @@ def eval_cx_collection(cx_collection, order, limit, coupling_object, attenuate=F
     Main
 '''
 def cuthill_order(dag_circuit, coupling_object):
-    # qasm = ""
-    # with open("./circuits/random0_n20_d20.qasm", "r") as f:
-    #     qasm = f.read()
-    #
-    # dag_circuit = qasm_to_dag_circuit(qasm)
+    """
+        Need to check what the implementation below does, but it should be
+        a kind of BFS similar to Cuthill ordering
+
+        https://en.wikipedia.org/wiki/Cuthill%E2%80%93McKee_algorithm
+
+        From Wikipedia:
+
+        The Cuthill McKee algorithm is a variant of the standard breadth-first
+        search algorithm used in graph algorithms. It starts with a peripheral
+        node and then generates levels R i {\displaystyle R_{i}} R_{i}
+        for i = 1 , 2 , . . {\displaystyle i=1,2,..} i=1, 2,..
+        until all nodes are exhausted.
+
+        The set R i + 1 {\displaystyle R_{i+1}} R_{i+1} is created
+        from set R i {\displaystyle R_{i}} R_i by listing all vertices
+        adjacent to all nodes in R i {\displaystyle R_{i}} R_{i}.
+        These nodes are listed in increasing degree. This last detail is
+        the only difference with the breadth-first search algorithm.
+
+    :param dag_circuit:
+    :param coupling_object:
+    :return:
+    """
 
     nrq = dag_circuit.width()
 
@@ -220,7 +253,7 @@ def cuthill_order(dag_circuit, coupling_object):
         '''
         if limit % parameter_max_depth == 0:
 
-            minnode, mincost = evaluate_leafs(all_leafs, options_tree)
+            minnode, mincost = cuthill_evaluate_leafs(all_leafs, options_tree)
 
             '''
                 Clean the tree and leave only the best path
@@ -241,7 +274,7 @@ def cuthill_order(dag_circuit, coupling_object):
 
         for prev_leaf in all_leafs:
             # setup ordering based on parents of this node
-            set_partial_permutation(limit, options_tree, order, prev_leaf)
+            cuthill_set_partial_perm(limit, options_tree, order, prev_leaf)
 
             #where to store candidates
             local_minimas = []
@@ -273,7 +306,10 @@ def cuthill_order(dag_circuit, coupling_object):
                 prev_sum = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
-                sume, skipped = eval_cx_collection(cx_collection, order, limit, coupling_object, True)
+                sume, skipped = eval_cx_collection(cx_collection,
+                                                   order, limit,
+                                                   coupling_object,
+                                                   attenuate = True)
 
                 # print("check", qubit, "tmp sum", sume, "order", order)
 
@@ -306,7 +342,7 @@ def cuthill_order(dag_circuit, coupling_object):
                 order[qubit] = math.inf
 
             #reset entire ordering
-            set_partial_permutation(math.inf, options_tree, order, prev_leaf)
+            cuthill_set_partial_perm(math.inf, options_tree, order, prev_leaf)
 
             # add leafs to the node that generated these permutations
             for lmin in local_minimas:
@@ -323,18 +359,18 @@ def cuthill_order(dag_circuit, coupling_object):
 
     # the final evaluation of the options_tree leafs
     all_leafs = [x for x in options_tree.nodes() if options_tree.out_degree(x) == 0]
-    minnode, mincost = evaluate_leafs(all_leafs, options_tree)
+    minnode, mincost = cuthill_evaluate_leafs(all_leafs, options_tree)
 
     # the final order permutation is computed.
     # this will be returned and used by the placement
-    set_partial_permutation(nrq, options_tree, order, minnode)
+    cuthill_set_partial_perm(nrq, options_tree, order, minnode)
 
     # print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
     # print(order)
 
     return order
 
-def evaluate_leafs(all_leafs, options_tree):
+def cuthill_evaluate_leafs(all_leafs, options_tree):
     """
     Return leaf with minimum cost and its cost
     :param all_leafs: collection of leafs to analyse
@@ -345,17 +381,18 @@ def evaluate_leafs(all_leafs, options_tree):
     mincost = math.inf
 
     for nd in all_leafs:
-        if options_tree.node[nd]["cost"] < mincost:
-            mincost = options_tree.node[nd]["cost"]
+        if options_tree.nodes[nd]["cost"] < mincost:
+            mincost = options_tree.nodes[nd]["cost"]
             minnode = nd
 
     if mincost == math.inf:
+        # If no minimum was found, return the last leaf in the list
         minnode = all_leafs[-1]
 
     return minnode, mincost
 
 
-def set_partial_permutation(limit, options_tree, order, prev_leaf):
+def cuthill_set_partial_perm(limit, options_tree, order, prev_leaf):
     """
 
     :param limit:
