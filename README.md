@@ -14,9 +14,6 @@ computational power to improve the cost of the placement heuristic.
 The heuristic and lookahead algorithm were used for 
 https://arxiv.org/abs/1811.08985
 
-The code is uncommented and based on a very old version of Qiskit.
-Transitioning to newer Qiskit is currently WIP.
-
 
 ### Original description of K7M
 
