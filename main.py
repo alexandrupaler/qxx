@@ -33,7 +33,5 @@ def main():
     k7m.run(circuit_to_dag(circ))
 
 
-
-
 if __name__ == '__main__':
     main()

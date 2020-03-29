@@ -8,7 +8,7 @@ from qiskit.circuit.quantumregister import QuantumRegister
 from qiskit.circuit.classicalregister import ClassicalRegister
 from qiskit.dagcircuit import DAGCircuit
 
-from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
+# from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
 
 # TODO clean imports
