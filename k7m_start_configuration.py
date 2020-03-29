@@ -148,7 +148,7 @@ def eval_cx_collection(cx_collection,
 '''
     Main
 '''
-def cuthill_order(dag_circuit, coupling_object):
+def cuthill_order(dag_circuit, coupling_object, parameters):
     """
         Need to check what the implementation below does, but it should be
         a kind of BFS similar to Cuthill ordering
@@ -222,21 +222,6 @@ def cuthill_order(dag_circuit, coupling_object):
     options_tree.add_node(maximum_nr_node, name=0, cost=0)
     maximum_nr_node += 1
 
-    '''
-        Parameters for search
-    '''
-    # maximum number of children of a node
-    parameter_max_children = nrq
-    # maximum depth of the search tree
-    # after this depth, the leafs are evaluated and only the path with minimum cost is kept in the tree
-    # thus, the tree is pruned
-    parameter_max_depth = nrq
-    # the first number_of_qubits * this factor the search maximises the cost
-    # afterwards it minimises it
-    parameter_qubit_increase_factor = 3 #nrq + 1#1.4
-
-    parameter_skipped_cnot_penalty = 200
-
     order = [math.inf for x in order]
     # take each index at a time.
     # start from 1
@@ -251,7 +236,7 @@ def cuthill_order(dag_circuit, coupling_object):
         '''
             Cut-Off search heuristic for placement
         '''
-        if limit % parameter_max_depth == 0:
+        if limit % parameters["max_depth"] == 0:
 
             minnode, mincost = cuthill_evaluate_leafs(all_leafs, options_tree)
 
@@ -335,7 +320,7 @@ def cuthill_order(dag_circuit, coupling_object):
                         hold_sum = sume
                         local_minimas.clear()
                         local_minimas.append(qubit)
-                    elif sume == hold_sum and len(local_minimas) < parameter_max_children:
+                    elif sume == hold_sum and len(local_minimas) < parameters["max_children"]:
                         local_minimas.append(qubit)
 
                 # reset placement

@@ -6,8 +6,26 @@ from k7m_start_configuration import cuthill_order
 class PositionsObject:
     def __init__(self, dag_circuit, coupling_object, random=False):
 
+        '''
+            Parameters for search
+        '''
+        parameters = {
+            # maximum number of children of a node
+            "max_children" : dag_circuit.num_qubits(),
+            # maximum depth of the search tree
+            # after this depth, the leafs are evaluated and only the path with minimum cost is kept in the tree
+            # thus, the tree is pruned
+            "max_depth" : dag_circuit.num_qubits(),
+            # the first number_of_qubits * this factor the search maximises the cost
+            # afterwards it minimises it
+            "qubit_increase_factor" : 3, # nrq + 1#1.4
+
+            "skipped_cnot_penalty" : 200,
+        }
+
+
         # if nrq > 6:
-        y = cuthill_order(dag_circuit, coupling_object)
+        y = cuthill_order(dag_circuit, coupling_object, parameters)
         # else:
         # y = list(range(nrq))
 
