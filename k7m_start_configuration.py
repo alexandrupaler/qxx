@@ -223,6 +223,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     maximum_nr_node += 1
 
     order = [math.inf for x in order]
+
     # take each index at a time.
     # start from 1
     for node_index in range(1, nrq):

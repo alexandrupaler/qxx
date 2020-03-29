@@ -25,9 +25,9 @@ class K7MPositions:
 
 
         # if nrq > 6:
-        y = cuthill_order(dag_circuit, coupling_object, parameters)
+        # y = cuthill_order(dag_circuit, coupling_object, parameters)
         # else:
-        # y = list(range(nrq))
+        y = list(range(dag_circuit.num_qubits()))
 
         # random = True
 

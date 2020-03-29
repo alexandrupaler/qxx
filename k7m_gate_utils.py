@@ -75,16 +75,17 @@ h_data = {
 
 
 def add_signatures_to_circuit(dag_circuit):
-    dag_circuit.add_basis_element("u2", 1, 0, 2)
-    dag_circuit.add_gate_data("u2", u2_data)
-
-    dag_circuit.add_basis_element("h", 1)
-    dag_circuit.add_gate_data("h", h_data)
-
-    dag_circuit.add_basis_element("CX", 2)
-    dag_circuit.add_basis_element("cx", 2)
-    dag_circuit.add_gate_data("cx", cx_data)
-    dag_circuit.add_gate_data("CX", cx_data)
+    # TODO: FIX IT!!! This was old qiskit
+    # dag_circuit.add_basis_element("u2", 1, 0, 2)
+    # dag_circuit.add_gate_data("u2", u2_data)
+    #
+    # dag_circuit.add_basis_element("h", 1)
+    # dag_circuit.add_gate_data("h", h_data)
+    #
+    # dag_circuit.add_basis_element("CX", 2)
+    # dag_circuit.add_basis_element("cx", 2)
+    # dag_circuit.add_gate_data("cx", cx_data)
+    # dag_circuit.add_gate_data("CX", cx_data)
 
     return dag_circuit
 
@@ -97,13 +98,14 @@ def k7m_online_cx_cancellation(circuit, gate):
     :return: True if to add the cnot to the circuit
     '''
     #is this a cnot?
-    if gate["name"] not in ["cx", "CX"]:
+    if gate.name not in ["cx", "CX"]:
         return True
 
     # this a cnot: it has two qargs and no cargs
     # get the predecessors of the output nodes that would touch the two cnot qubits
-    out1 = circuit.output_map[gate["qargs"][0]]
-    out2 = circuit.output_map[gate["qargs"][1]]
+    out1 = circuit.output_map[gate.qargs[0]]
+    out2 = circuit.output_map[gate.qargs[1]]
+
     pred1 = list(circuit.multi_graph.predecessors(out1))
     pred2 = list(circuit.multi_graph.predecessors(out2))
 
@@ -133,17 +135,18 @@ def append_ops_to_dag(dag_circuit, op_list):
         if k7m_online_cx_cancellation(dag_circuit, op):
             # if paler_simplify_1q(dag_circuit, op):
             # Use  Optimize1qGates and CXCancellation from the new qiskit
-            dag_circuit.apply_operation_back(op["name"],
-                                             op["qargs"],
-                                             params=op["params"])
+            # TODO: FIX IT!!!
+            # dag_circuit.apply_operation_back(op, op.qargs)
+            dag_circuit.apply_operation_back(op)
+
 
     return dag_circuit.node_counter
 
 
 def clone_dag_without_gates(dag_circuit):
     compiled_dag = DAGCircuit()
-    compiled_dag.basis = copy.deepcopy(dag_circuit.basis)
-    compiled_dag.gates = copy.deepcopy(dag_circuit.gates)
+    # compiled_dag.basis = copy.deepcopy(dag_circuit.basis)
+    # compiled_dag.gates = copy.deepcopy(dag_circuit.gates)
     # compiled_dag.add_qreg(QuantumRegister(get_dag_nr_qubits(dag_circuit), "q"))
     # compiled_dag.add_creg(ClassicalRegister(get_dag_nr_qubits(dag_circuit), "c"))
 

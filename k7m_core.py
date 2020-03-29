@@ -114,13 +114,13 @@ class K7MCompiler(TransformationPass):
         fcnots = self.first_set_of_disjunct_cnots(dag_circuit, dag_circuit.num_qubits())
 
         for circuit_cnot in fcnots:
-            phys_gate = self.positions_object.translate_op_to_coupling_map(circuit_cnot)
+            phys_gate = self.positions_obj.translate_op_to_coupling_map(circuit_cnot)
             phys_qub1, phys_qub2 = get_cnot_qubits(phys_gate)
 
             start_phys1 = self.get_coupling_node_idx(phys_qub1)
             start_phys2 = self.get_coupling_node_idx(phys_qub2)
 
-            stop_phys1, stop_phys2 = self.coupling_object.heuristic_choose_coupling_edge(
+            stop_phys1, stop_phys2 = self.coupling_obj.heuristic_choose_coupling_edge(
                 start_phys1,
                 start_phys2
             )
@@ -167,7 +167,7 @@ class K7MCompiler(TransformationPass):
 
             # print(original_op)
 
-            translated_op = self.positions_object.translate_op_to_coupling_map(original_op)
+            translated_op = self.positions_obj.translate_op_to_coupling_map(original_op)
 
             if translated_op.name not in ["cx", "CX"]:
                 # print(op)
@@ -195,13 +195,13 @@ class K7MCompiler(TransformationPass):
                 # How much does a movement cost?
                 additional_cost = 0
 
-                if self.coupling_object.is_pair(qub1, qub2):
+                if self.coupling_obj.is_pair(qub1, qub2):
                     # can be directly implemented
                     gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                     additional_cost = self.global_operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
-                elif self.coupling_object.is_pair(qub2, qub1):
+                elif self.coupling_obj.is_pair(qub2, qub1):
                     # needs a reversed cnot
                     gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                     additional_cost = self.global_operation_costs["rev_cnot"]
@@ -226,7 +226,7 @@ class K7MCompiler(TransformationPass):
                     self.commented_method_for_lookahead()
 
                     # Compute the edgee index where the qubits could be moved
-                    stop_node_index1, stop_node_index2 = self.coupling_object.heuristic_choose_coupling_edge(
+                    stop_node_index1, stop_node_index2 = self.coupling_obj.heuristic_choose_coupling_edge(
                         start_node_index1,
                         start_node_index2,
                         next_nodes)
@@ -256,7 +256,7 @@ class K7MCompiler(TransformationPass):
                             '''
                                 Update: the previous swaps may have moved this qubit around
                             '''
-                            translated_op = self.positions_object.translate_op_to_coupling_map(original_op)
+                            translated_op = self.positions_obj.translate_op_to_coupling_map(original_op)
                             qub1, qub2 = get_cnot_qubits(translated_op)
                             start_node_index2 = self.get_coupling_node_idx(qub2)
 
@@ -290,15 +290,15 @@ class K7MCompiler(TransformationPass):
                         It should be possible to implement the CNOT now
                     '''
                     # retranslate
-                    retranslated_op = self.positions_object.translate_op_to_coupling_map(original_op)
+                    retranslated_op = self.positions_obj.translate_op_to_coupling_map(original_op)
                     qub1, qub2 = get_cnot_qubits(retranslated_op)
 
-                    if self.coupling_object.is_pair(qub1, qub2):
+                    if self.coupling_obj.is_pair(qub1, qub2):
                         if not dry_run:
                             gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                         additional_cost += self.global_operation_costs["ok"]
                         # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
-                    elif self.coupling_object.is_pair(qub2, qub1):
+                    elif self.coupling_obj.is_pair(qub2, qub1):
                         if not dry_run:
                             gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                         additional_cost += self.global_operation_costs["rev_cnot"]
@@ -308,7 +308,7 @@ class K7MCompiler(TransformationPass):
                     gs.append_ops_to_dag(compiled_dag, gates_to_insert)
 
                 # the others are not deep copied
-                backtracking_stack.append((copy.deepcopy(current_positions),
+                backtracking_stack.append((copy.deepcopy(self.positions_obj),
                                            original_op,# gate,
                                            coupling_edge_idx,
                                            additional_cost)
@@ -434,7 +434,7 @@ class K7MCompiler(TransformationPass):
             Move the first qubit to the first edge position
         '''
         # route1 = coupling_object.reconstruct_route(start_phys, stop_phys)
-        route_phys = self.coupling_object.reconstruct_route(start_phys, stop_phys)
+        route_phys = self.coupling_obj.reconstruct_route(start_phys, stop_phys)
         # TODO: FIX IT!!!!
         # route1q = [coupling_object.coupling.index_to_qubit[r][1] for r in route1]
         # Get the qubits from the circuit...not their indices
@@ -445,7 +445,7 @@ class K7MCompiler(TransformationPass):
         '''
         # route1log = [current_who_at_index[x] for x in route1q]
         # positions_object.update_configuration(route1log)
-        self.positions_object.update_configuration(route_phys)
+        self.positions_obj.update_configuration(route_phys)
         # positions_object.debug_configuration()
 
         # return route1, route_phys
