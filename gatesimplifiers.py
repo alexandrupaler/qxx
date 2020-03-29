@@ -5,67 +5,67 @@ import sympy
 from sympy import Number as N
 # from qiskit.mapper._compiling import rz_array, ry_array, euler_angles_1q
 
-def paler_cx_cancellation(circuit, gate):
-    '''
-    Cancel a CNOT in the circuit if the gate to add is a similar CNOT
-    :param circuit: the circuit
-    :param gate: the cnot
-    :return: True if to add the cnot to the circuit
-    '''
-    #is this a cnot?
-    if gate["name"] not in ["cx", "CX"]:
-        return True
+# def paler_cx_cancellation(circuit, gate):
+#     '''
+#     Cancel a CNOT in the circuit if the gate to add is a similar CNOT
+#     :param circuit: the circuit
+#     :param gate: the cnot
+#     :return: True if to add the cnot to the circuit
+#     '''
+#     #is this a cnot?
+#     if gate["name"] not in ["cx", "CX"]:
+#         return True
+#
+#     # this a cnot: it has two qargs and no cargs
+#     # get the predecessors of the output nodes that would touch the two cnot qubits
+#     out1 = circuit.output_map[gate["qargs"][0]]
+#     out2 = circuit.output_map[gate["qargs"][1]]
+#     pred1 = list(circuit.multi_graph.predecessors(out1))
+#     pred2 = list(circuit.multi_graph.predecessors(out2))
+#
+#     if len(pred1) != len(pred2):
+#         return True
+#
+#     if len(pred1) == len(pred2) and len(pred1) == 1 and pred1[0] == pred2[0]:
+#         qargs0 = circuit.multi_graph.node[pred1[0]]["qargs"]
+#         qargs1 = gate["qargs"]
+#         if qargs0 == qargs1:
+#             # the gate to add is the same the predecessor
+#             # delete the predecessor
+#             circuit._remove_op_node(pred1[0])
+#             # do not add the current gate
+#             return False
+#         # else:
+#         #     print(qargs0, qargs1)
+#     # else:
+#     #     print(pred1, pred2)
+#
+#     return True
 
-    # this a cnot: it has two qargs and no cargs
-    # get the predecessors of the output nodes that would touch the two cnot qubits
-    out1 = circuit.output_map[gate["qargs"][0]]
-    out2 = circuit.output_map[gate["qargs"][1]]
-    pred1 = list(circuit.multi_graph.predecessors(out1))
-    pred2 = list(circuit.multi_graph.predecessors(out2))
 
-    if len(pred1) != len(pred2):
-        return True
-
-    if len(pred1) == len(pred2) and len(pred1) == 1 and pred1[0] == pred2[0]:
-        qargs0 = circuit.multi_graph.node[pred1[0]]["qargs"]
-        qargs1 = gate["qargs"]
-        if qargs0 == qargs1:
-            # the gate to add is the same the predecessor
-            # delete the predecessor
-            circuit._remove_op_node(pred1[0])
-            # do not add the current gate
-            return False
-        # else:
-        #     print(qargs0, qargs1)
-    # else:
-    #     print(pred1, pred2)
-
-    return True
-
-
-def paler_simplify_1q(circuit, gate):
-    '''
-    Multiply single qubit gates together
-    :param circuit:
-    :param gate: gate analysed. It can be a CNOT, then not considered
-    :return: if the gate should be added to the circuit
-    '''
-    #is this a single qubit gate?
-    if gate["name"] not in ["u1", "u2", "u3"]:
-        return True
-
-    # this a single qubit gate: it has a single qargs and no cargs
-    # get the predecessor of the output nodes that would touch the gate
-    out1 = circuit.output_map[gate["qargs"][0]]
-    pred1 = list(circuit.multi_graph.predecessors(out1))
-
-    # is this a single qubit gate?
-    if circuit.multi_graph.node[pred1[0]]["name"] not in ["u1", "u2", "u3"]:
-        return True
-
-    modified_from_qiskit(circuit, [pred1[0]], gate)
-
-    return False
+# def paler_simplify_1q(circuit, gate):
+#     '''
+#     Multiply single qubit gates together
+#     :param circuit:
+#     :param gate: gate analysed. It can be a CNOT, then not considered
+#     :return: if the gate should be added to the circuit
+#     '''
+#     #is this a single qubit gate?
+#     if gate["name"] not in ["u1", "u2", "u3"]:
+#         return True
+#
+#     # this a single qubit gate: it has a single qargs and no cargs
+#     # get the predecessor of the output nodes that would touch the gate
+#     out1 = circuit.output_map[gate["qargs"][0]]
+#     pred1 = list(circuit.multi_graph.predecessors(out1))
+#
+#     # is this a single qubit gate?
+#     if circuit.multi_graph.node[pred1[0]]["name"] not in ["u1", "u2", "u3"]:
+#         return True
+#
+#     modified_from_qiskit(circuit, [pred1[0]], gate)
+#
+#     return False
 
 # def modified_from_qiskit(unrolled, run, gate):
 #     node_right = unrolled.multi_graph.node[run[0]]

@@ -6,16 +6,12 @@ import collections
 import numpy
 import copy
 
-from qiskit.circuit.quantumregister import QuantumRegister
-from qiskit.circuit.classicalregister import ClassicalRegister
-from qiskit.dagcircuit import DAGCircuit
 from qiskit.transpiler.basepasses import TransformationPass
-
-from gatesignatures import add_signatures_to_circuit
-from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
 from k7m_coupling import K7MCoupling
 from k7m_positions import K7MPositions
+
+import k7m_gate_utils as gs
 
 class K7MCompiler(TransformationPass):
 
@@ -152,10 +148,10 @@ class K7MCompiler(TransformationPass):
         '''
             Initialise the stack and the compiled solution
         '''
-        dag_circuit = add_signatures_to_circuit(dag_circuit)
+        dag_circuit = gs.add_signatures_to_circuit(dag_circuit)
         compiled_dag = None
         if not dry_run:
-            compiled_dag = clone_dag_without_gates(dag_circuit)
+            compiled_dag = gs.clone_dag_without_gates(dag_circuit)
         else:
             compiled_dag = dag_circuit
 
@@ -181,7 +177,7 @@ class K7MCompiler(TransformationPass):
                 if not dry_run:
                     if translated_op.name in ["u1", "u2", "u3"]:
                         # TODO: Not necessary. Was used here for speed purposes.
-                        append_ops_to_dag(compiled_dag, [translated_op])
+                        gs.append_ops_to_dag(compiled_dag, [translated_op])
                     else:
                         compiled_dag.apply_operation_back(translated_op["name"],
                                                           translated_op["qargs"],
@@ -201,13 +197,13 @@ class K7MCompiler(TransformationPass):
 
                 if self.coupling_object.is_pair(qub1, qub2):
                     # can be directly implemented
-                    gates_to_insert += compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                    gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                     additional_cost = self.global_operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
                 elif self.coupling_object.is_pair(qub2, qub1):
                     # needs a reversed cnot
-                    gates_to_insert += compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                    gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                     additional_cost = self.global_operation_costs["rev_cnot"]
                     # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
@@ -244,7 +240,7 @@ class K7MCompiler(TransformationPass):
                         # do not compute routes
                         # but make an inverse cnot
                         if not dry_run:
-                            gates_to_insert += compute_cnot_gate_list(start_node_index2, start_node_index1, inverse_cnot = True)
+                            gates_to_insert += gs.compute_cnot_gate_list(start_node_index2, start_node_index1, inverse_cnot = True)
 
                     else:
                         if start_node_index1 != stop_node_index1:
@@ -299,17 +295,17 @@ class K7MCompiler(TransformationPass):
 
                     if self.coupling_object.is_pair(qub1, qub2):
                         if not dry_run:
-                            gates_to_insert += compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                            gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                         additional_cost += self.global_operation_costs["ok"]
                         # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
                     elif self.coupling_object.is_pair(qub2, qub1):
                         if not dry_run:
-                            gates_to_insert += compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                            gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                         additional_cost += self.global_operation_costs["rev_cnot"]
                         # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
                 if not dry_run:
-                    append_ops_to_dag(compiled_dag, gates_to_insert)
+                    gs.append_ops_to_dag(compiled_dag, gates_to_insert)
 
                 # the others are not deep copied
                 backtracking_stack.append((copy.deepcopy(current_positions),
@@ -353,11 +349,11 @@ class K7MCompiler(TransformationPass):
 
                 if not is_error:
                     # print("swap", qub1, qub2)
-                    route_gate_list += compute_cnot_gate_list(qub1, qub2,
+                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=False)
-                    route_gate_list += compute_cnot_gate_list(qub1, qub2,
+                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=True)
-                    route_gate_list += compute_cnot_gate_list(qub1, qub2,
+                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=False)
 
                 qub1 = qtmp
@@ -454,48 +450,6 @@ class K7MCompiler(TransformationPass):
 
         # return route1, route_phys
         return route_phys
-
-
-def append_ops_to_dag(dag_circuit, op_list):
-
-    for op in op_list:
-        if paler_cx_cancellation(dag_circuit, op):
-            if paler_simplify_1q(dag_circuit, op):
-                dag_circuit.apply_operation_back(op["name"],
-                                                 op["qargs"],
-                                                 params=op["params"])
-
-    return dag_circuit.node_counter
-
-
-def clone_dag_without_gates(dag_circuit):
-    compiled_dag = DAGCircuit()
-    compiled_dag.basis = copy.deepcopy(dag_circuit.basis)
-    compiled_dag.gates = copy.deepcopy(dag_circuit.gates)
-    # compiled_dag.add_qreg(QuantumRegister(get_dag_nr_qubits(dag_circuit), "q"))
-    # compiled_dag.add_creg(ClassicalRegister(get_dag_nr_qubits(dag_circuit), "c"))
-
-    compiled_dag.add_qreg(QuantumRegister(dag_circuit.num_qubits(), "q"))
-    compiled_dag.add_creg(ClassicalRegister(dag_circuit.num_clbits(), "c"))
-
-    return compiled_dag
-
-
-def compute_cnot_gate_list(qub1, qub2, inverse_cnot = False):
-    ret = []
-
-    if not inverse_cnot:
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
-    else:
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
-
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-
-    return ret
 
 
 def get_cnot_qubits(op):

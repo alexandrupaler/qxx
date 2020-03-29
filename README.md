@@ -1,4 +1,4 @@
-## K7M - an algorithm to map circuits to NISQ
+## K7M - an method to map circuits to NISQ
 
 K7M is a heuristic to find a good initial mapping of qubits such that a small 
 number of SWAPS is introduced. The general idea of K7M is that the initial
