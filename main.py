@@ -1,6 +1,6 @@
 import json
 
-from k7m_core_functionality import K7MCompiler
+from k7m_core import K7MCompiler
 
 basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
 

@@ -11,7 +11,7 @@ import math
 
 from qiskit.transpiler import CouplingMap
 
-class CouplingObject:
+class K7MCoupling:
     def __init__(self, coupling_map, gate_costs):
 
         self.coupling_map = coupling_map

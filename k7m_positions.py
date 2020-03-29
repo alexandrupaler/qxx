@@ -3,7 +3,7 @@ import copy
 
 from k7m_start_configuration import cuthill_order
 
-class PositionsObject:
+class K7MPositions:
     def __init__(self, dag_circuit, coupling_object, random=False):
 
         '''

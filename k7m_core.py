@@ -14,8 +14,8 @@ from qiskit.transpiler.basepasses import TransformationPass
 from gatesignatures import add_signatures_to_circuit
 from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
-from k7m_coupling_object import CouplingObject
-from k7m_positions_object import PositionsObject
+from k7m_coupling import K7MCoupling
+from k7m_positions import K7MPositions
 
 class K7MCompiler(TransformationPass):
 
@@ -23,7 +23,7 @@ class K7MCompiler(TransformationPass):
 
         # self.gate_costs = gate_costs
 
-        self.coupling_obj = CouplingObject(coupling_map, gate_costs)
+        self.coupling_obj = K7MCoupling(coupling_map, gate_costs)
 
         self.positions_obj = None
 
@@ -40,9 +40,9 @@ class K7MCompiler(TransformationPass):
     def run(self, dag_circuit):
 
         if self.positions_obj == None:
-            self.positions_obj = PositionsObject(dag_circuit,
-                                                 self.coupling_obj,
-                                                 random = False)
+            self.positions_obj = K7MPositions(dag_circuit,
+                                              self.coupling_obj,
+                                              random = False)
         '''
             Start with an initial configuration
         '''
