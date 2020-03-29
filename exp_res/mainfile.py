@@ -3,12 +3,12 @@ from k7m_core_functionality import k7m_compiler_function
 from k7m_core_functionality import compiler_function_nlayout
 
 # Import submission evaluation and scoring functions
-from challenge_evaluation import evaluate, score, qasm_to_dag_circuit
+from exp_res.challenge_evaluation import score
 
 import os
 
 # Possibly useful other helper function
-from challenge_evaluation import qasm_to_dag_circuit, load_coupling, get_layout
+from exp_res.challenge_evaluation import qasm_to_dag_circuit, load_coupling
 
 # Select the simulation backend to calculate the quantum states resulting from the circuits
 # On Windows platform the C++ Simulator is not yet available with pip install
