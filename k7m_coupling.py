@@ -19,19 +19,21 @@ class K7MCoupling:
 
         '''
             Prepare the Floyd Warshall graph and weight matrix
+            The graph is directed
         '''
         self.coupling_pred, self.coupling_dist = \
             nx.floyd_warshall_predecessor_and_distance(
                 self.coupling.graph,
                 weight="weight")
 
-        """
-            Reverse edges are added, assuming that these do not exist in the coupling
-        """
+
         self.coupling_edges_list = [
             e for e in self.coupling.graph.edges()
         ]
 
+        """
+            Reverse edges are added, assuming that these do not exist in the coupling
+        """
         self.add_reverse_edges_and_weights(gate_costs)
 
 
@@ -102,10 +104,12 @@ class K7MCoupling:
         #     pair_pass &= qubit2 in coupling_map[qubit1]
         # return pair_pass
 
-        bool_found = (qubit1 in self.coupling_map)
-        if bool_found:
-            bool_found = bool_found and (
-                        qubit2 in self.coupling_map[qubit1])
+        # bool_found = (qubit1 in self.coupling_map)
+        # if bool_found:
+        #     bool_found = bool_found and (
+        #                 qubit2 in self.coupling_map[qubit1])
+
+        bool_found = [qubit1, qubit2] in self.coupling_map
         return bool_found
 
 
@@ -158,6 +162,6 @@ class K7MCoupling:
                 route.appendleft(stop_phys)
 
         # return list(reversed(route))
-        return route
+        return list(route)
 
 

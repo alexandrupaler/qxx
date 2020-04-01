@@ -11,8 +11,8 @@ def get_distance_coupling(c1, c2, coupling_object):
     :return:
     """
 
-    idx1 = coupling_object.coupling.qubits[("q", c1)]
-    idx2 = coupling_object.coupling.qubits[("q", c2)]
+    idx1 = coupling_object.coupling.physical_qubits[c1]
+    idx2 = coupling_object.coupling.physical_qubits[c2]
 
     dist = coupling_object.coupling_dist[idx1][idx2]
 

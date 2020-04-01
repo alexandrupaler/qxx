@@ -1,12 +1,13 @@
-import sympy
+# import sympy
 import copy
+import math
 
 from qiskit.transpiler.passes import Unroller
 from qiskit.qasm.qasm import Qasm
 
 from qiskit.circuit.quantumregister import QuantumRegister
 from qiskit.circuit.classicalregister import ClassicalRegister
-from qiskit.dagcircuit import DAGCircuit
+from qiskit.dagcircuit import DAGCircuit, DAGNode
 
 # from gatesimplifiers import paler_cx_cancellation, paler_simplify_1q
 
@@ -41,7 +42,7 @@ u2_data = {
             node.ExpressionList([
                 node.BinaryOp([
                     node.BinaryOperator('/'),
-                    node.Real(sympy.pi),
+                    node.Real(math.pi),
                     node.Int(2)
                 ]),
                 node.Id("phi", 0, ""),
@@ -64,7 +65,7 @@ h_data = {
             node.Id("u2", 0, ""),
             node.ExpressionList([
                 node.Int(0),
-                node.Real(sympy.pi)
+                node.Real(math.pi)
             ]),
             node.PrimaryList([
                 node.Id("a", 0, "")
@@ -132,7 +133,7 @@ def k7m_online_cx_cancellation(circuit, gate):
 def append_ops_to_dag(dag_circuit, op_list):
 
     for op in op_list:
-        if k7m_online_cx_cancellation(dag_circuit, op):
+        # if k7m_online_cx_cancellation(dag_circuit, op):
             # if paler_simplify_1q(dag_circuit, op):
             # Use  Optimize1qGates and CXCancellation from the new qiskit
             # TODO: FIX IT!!!
@@ -156,19 +157,38 @@ def clone_dag_without_gates(dag_circuit):
     return compiled_dag
 
 
-def compute_cnot_gate_list(qub1, qub2, inverse_cnot = False):
+def comp_cnot_gate_list(qub1, qub2, inverse_cnot = False):
     ret = []
 
+    # if not inverse_cnot:
+    #     ret.append(DAGNode({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None}))
+    # else:
+    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub1)], "params": [0, math.pi]}))
+    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub2)], "params": [0, math.pi]}))
+    #
+    #     ret.append(DAGNode({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None}))
+    #
+    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub1)], "params": [0, math.pi]}))
+    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub2)], "params": [0, math.pi]}))
+
     if not inverse_cnot:
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
+        ret.append(DAGNode(
+            {"name": "cx", "qargs": [qub1, qub2],
+             "params": None}))
     else:
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
+        ret.append(DAGNode(
+            {"name": "u2", "qargs": [qub1], "params": [0, math.pi]}))
+        ret.append(DAGNode(
+            {"name": "u2", "qargs": [qub2], "params": [0, math.pi]}))
 
-        ret.append({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None})
+        ret.append(DAGNode(
+            {"name": "cx", "qargs": [[qub1, qub2]],
+             "params": None}))
 
-        ret.append({"name": "u2", "qargs": [("q", qub1)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
-        ret.append({"name": "u2", "qargs": [("q", qub2)], "params": [sympy.N(0), sympy.N(sympy.pi)]})
+        ret.append(DAGNode(
+            {"name": "u2", "qargs": [qub1], "params": [0, math.pi]}))
+        ret.append(DAGNode(
+            {"name": "u2", "qargs": [qub2], "params": [0, math.pi]}))
 
     return ret
 

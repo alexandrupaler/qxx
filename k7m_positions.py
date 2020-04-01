@@ -113,7 +113,7 @@ class K7MPositions:
             x = self.pos_circuit_to_phys[qubit_args[1]]
             # old code below
             # translated_op.qargs.append(("q", x))
-            # new code belo
+            # new code below
             translated_op.qargs.append((qubit_args[0], x))
 
         # TODO: Leave untranslated for the moment?

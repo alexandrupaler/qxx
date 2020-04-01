@@ -179,11 +179,12 @@ class K7MCompiler(TransformationPass):
                         # TODO: Not necessary. Was used here for speed purposes.
                         gs.append_ops_to_dag(compiled_dag, [translated_op])
                     else:
-                        compiled_dag.apply_operation_back(translated_op["name"],
-                                                          translated_op["qargs"],
-                                                          translated_op["cargs"],
-                                                          translated_op["params"],
-                                                          translated_op["condition"])
+                        # compiled_dag.apply_operation_back(translated_op["name"],
+                        #                                   translated_op["qargs"],
+                        #                                   translated_op["cargs"],
+                        #                                   translated_op["params"],
+                        #                                   translated_op["condition"])
+                        compiled_dag.apply_operation_back(translated_op)
             else:
                 '''
                     Found a CNOT:
@@ -197,13 +198,13 @@ class K7MCompiler(TransformationPass):
 
                 if self.coupling_obj.is_pair(qub1, qub2):
                     # can be directly implemented
-                    gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                    gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                     additional_cost = self.global_operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
                 elif self.coupling_obj.is_pair(qub2, qub1):
                     # needs a reversed cnot
-                    gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                    gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                     additional_cost = self.global_operation_costs["rev_cnot"]
                     # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
@@ -213,8 +214,8 @@ class K7MCompiler(TransformationPass):
                         qub 1 and qub2 are not a coupling_map edge
                         Compute a solution
                     '''
-                    start_node_index1 = self.get_coupling_node_idx(qub1)
-                    start_node_index2 = self.get_coupling_node_idx(qub2)
+                    start_phys_q_1 = self.get_coupling_node_idx(qub1)
+                    start_phys_q_2 = self.get_coupling_node_idx(qub2)
 
                     '''
                         A Look-ahead/behind to see which edges were/will 
@@ -223,29 +224,30 @@ class K7MCompiler(TransformationPass):
                     '''
                     #get the next cnots and check use their coordinates to find the next edge
                     next_nodes = []
-                    self.commented_method_for_lookahead()
+                    # self.commented_method_for_lookahead(next_nodes)
 
                     # Compute the edgee index where the qubits could be moved
-                    stop_node_index1, stop_node_index2 = self.coupling_obj.heuristic_choose_coupling_edge(
-                        start_node_index1,
-                        start_node_index2,
+                    stop_phys_q1, stop_phys_q2 = self.coupling_obj.heuristic_choose_coupling_edge(
+                        start_phys_q_1,
+                        start_phys_q_2,
                         next_nodes)
 
                     # #Determine the indices of the edge nodes where the qubits will be moved
                     # stop_node_index1 = coupling_object.coupling_edges_list[coupling_edge_idx][0]
                     # stop_node_index2 = coupling_object.coupling_edges_list[coupling_edge_idx][1]
 
-                    if start_node_index1 == stop_node_index2 and start_node_index2 == stop_node_index1:
+                    if start_phys_q_1 == stop_phys_q2 and start_phys_q_2 == stop_phys_q1:
                         # the qubits sit on opposite positions than expected
                         # do not compute routes
                         # but make an inverse cnot
                         if not dry_run:
-                            gates_to_insert += gs.compute_cnot_gate_list(start_node_index2, start_node_index1, inverse_cnot = True)
+                            gates_to_insert += gs.comp_cnot_gate_list(start_phys_q_2, start_phys_q_1, inverse_cnot = True)
 
                     else:
-                        if start_node_index1 != stop_node_index1:
+                        if start_phys_q_1 != stop_phys_q1:
                             # move the first qubit to the first edge node
-                            route1, route1q = self.move_qubit_from_to(start_node_index1, stop_node_index1)
+                            # route1, \
+                            route1q = self.move_qubit_from_to(start_phys_q_1, stop_phys_q1)
 
                             # a circuit is not generated, do not place gates
                             ret_gates_to_insert, part_cost = self.compute_swap_chain_and_cost(route1q, dry_run)
@@ -258,11 +260,12 @@ class K7MCompiler(TransformationPass):
                             '''
                             translated_op = self.positions_obj.translate_op_to_coupling_map(original_op)
                             qub1, qub2 = get_cnot_qubits(translated_op)
-                            start_node_index2 = self.get_coupling_node_idx(qub2)
+                            start_phys_q_2 = self.get_coupling_node_idx(qub2)
 
-                        if start_node_index2 != stop_node_index2:
+                        if start_phys_q_2 != stop_phys_q2:
                             #move the second qubit to the second edge node
-                            route2, route2q = self.move_qubit_from_to(start_node_index2, stop_node_index2)
+                            # route2, \
+                            route2q = self.move_qubit_from_to(start_phys_q_2, stop_phys_q2)
                             # a circuit is not generated, do not place gates
                             ret_gates_to_insert, part_cost = self.compute_swap_chain_and_cost(route2q, dry_run)
                             additional_cost += part_cost
@@ -272,14 +275,23 @@ class K7MCompiler(TransformationPass):
                             '''
                                 Update: the previous swaps may have moved qub1 backwards
                             '''
-                            if stop_node_index1 in route2:
+                            # before refactoring
+                            # if stop_phys_q1 in route2:
+                            # after refactoring
+                            if stop_phys_q1 in route2q:
                                 # qubit_node_index1 = get_coupling_node_idx(qub1, coupling, current_positions)
 
-                                start_node_index1 = route2[route2.index(stop_node_index1) - 1]
+                                # The qubit before stop_qubit...Why am I writing it like this?
+                                # before refactoring
+                                # start_phys_q_1 = route2[route2.index(stop_phys_q1) - 1]
+                                # after refactoring
+                                start_phys_q_1 = route2q[
+                                    route2q.index(stop_phys_q1) - 1]
 
                                 # this if-statement seems useless
-                                if start_node_index1 != stop_node_index1:
-                                    route1, route1q = self.move_qubit_from_to(start_node_index1, stop_node_index1)
+                                if start_phys_q_1 != stop_phys_q1:
+                                    # route1, \
+                                    route1q = self.move_qubit_from_to(start_phys_q_1, stop_phys_q1)
 
                                     ret_gates_to_insert, part_cost = self.compute_swap_chain_and_cost(route1q, dry_run)
                                     additional_cost += part_cost
@@ -295,12 +307,12 @@ class K7MCompiler(TransformationPass):
 
                     if self.coupling_obj.is_pair(qub1, qub2):
                         if not dry_run:
-                            gates_to_insert += gs.compute_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                            gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2, inverse_cnot = False)
                         additional_cost += self.global_operation_costs["ok"]
                         # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
                     elif self.coupling_obj.is_pair(qub2, qub1):
                         if not dry_run:
-                            gates_to_insert += gs.compute_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                            gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1, inverse_cnot = True)
                         additional_cost += self.global_operation_costs["rev_cnot"]
                         # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
@@ -341,6 +353,12 @@ class K7MCompiler(TransformationPass):
             for qub2 in route[1:]:
                 qtmp = qub2
                 is_error = False
+
+                """
+                If the coupling map does not include qub1,qub2
+                then check for qub2,qub1 and perform swap between indices
+                if the latter does not exist either --> ERROR
+                """
                 if not self.coupling_obj.is_pair(qub1, qub2):
                     qub1, qub2 = qub2, qub1  # swap variables
                     if not self.coupling_obj.is_pair(qub1, qub2):
@@ -349,11 +367,16 @@ class K7MCompiler(TransformationPass):
 
                 if not is_error:
                     # print("swap", qub1, qub2)
-                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
+                    """
+                    This works correct because the 
+                    qub1, qub2 variables are swapped above
+                    The CNOTs are always according to the correct coupling graph
+                    """
+                    route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=False)
-                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
+                    route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=True)
-                    route_gate_list += gs.compute_cnot_gate_list(qub1, qub2,
+                    route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
                                                               inverse_cnot=False)
 
                 qub1 = qtmp
@@ -364,12 +387,13 @@ class K7MCompiler(TransformationPass):
         return route_gate_list, route_cost
 
 
-    def commented_method_for_lookahead(self):
-        pass
+    def commented_method_for_lookahead(self, nodes_collection, gate, dag_circuit):
         """
             The code was where the method is commented
             It has to do with the clustering of the CNOTs used in 
             coupling_object.heuristic_choose_coupling_edge_idx()
+
+            Its translation is not finished
         """
         # ni_index = nodes_collection.index(gate)
         # #use 3 cnots
@@ -390,15 +414,17 @@ class K7MCompiler(TransformationPass):
         #     if ni_index == 0:#len(nodes_collection):
         #         break
         #
-        #     t_ni_op = translate_op_to_coupling_map(ni_op, current_positions)
+        #     t_ni_op = self.positions_obj.translate_op_to_coupling_map(ni_op)
         #
         #     ni_q1, ni_q2 = get_cnot_qubits(t_ni_op)
-        #     ni_q1_i = get_coupling_node_idx(ni_q1, coupling_object["coupling"], current_positions)
-        #     ni_q2_i = get_coupling_node_idx(ni_q2, coupling_object["coupling"], current_positions)
+        #     ni_q1_i = self.get_coupling_node_idx(ni_q1)
+        #     ni_q2_i = self.get_coupling_node_idx(ni_q2)
+        #
         #     if ni_q1_i not in next_nodes and ni_q1_i not in [qubit_node_index1, qubit_node_index2]:
         #         next_nodes.append(ni_q1_i)
         #     if ni_q2_i not in next_nodes and ni_q2_i not in [qubit_node_index1, qubit_node_index2]:
         #         next_nodes.append(ni_q2_i)
+        pass
 
 
     def first_set_of_disjunct_cnots(self, dag_circuit, maxqubits):
