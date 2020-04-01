@@ -1,6 +1,8 @@
 import numpy
 import copy
 
+import qiskit
+
 from k7m_start_configuration import cuthill_order
 
 class K7MPositions:
@@ -22,6 +24,8 @@ class K7MPositions:
 
             "skipped_cnot_penalty" : 200,
         }
+
+        self.quantum_reg = qiskit.QuantumRegister(dag_circuit.num_qubits(), "q")
 
 
         # if nrq > 6:
@@ -114,7 +118,7 @@ class K7MPositions:
             # old code below
             # translated_op.qargs.append(("q", x))
             # new code below
-            translated_op.qargs.append((qubit_args[0], x))
+            translated_op.qargs.append((self.quantum_reg, x))
 
         # TODO: Leave untranslated for the moment?
         # translated_op["cargs"] = copy.deepcopy(op.cargs)

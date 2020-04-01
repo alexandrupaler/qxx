@@ -1,5 +1,7 @@
 import json
 
+from qiskit import QuantumCircuit
+
 from k7m_core import K7MCompiler
 
 basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
@@ -13,9 +15,7 @@ gate_costs = {'id': 0, 'u1': 0, 'measure': 0,
 def main():
 
     # Load the circuit
-    from qiskit import QuantumCircuit
     circ = QuantumCircuit.from_qasm_file("./circuits/random0_n5_d5.qasm")
-    from qiskit.converters import circuit_to_dag
 
     # Load the coupling map
     # TODO: Test small circuits on large graphs. Was working before refactor.
@@ -30,7 +30,8 @@ def main():
 
 
     k7m = K7MCompiler(coupling, gate_costs)
-    k7m.run(circuit_to_dag(circ))
+    result = k7m.run(circ)
+    print(result)
 
 
 if __name__ == '__main__':

@@ -138,57 +138,28 @@ def append_ops_to_dag(dag_circuit, op_list):
             # Use  Optimize1qGates and CXCancellation from the new qiskit
             # TODO: FIX IT!!!
             # dag_circuit.apply_operation_back(op, op.qargs)
-            dag_circuit.apply_operation_back(op)
+            # dag_circuit.apply_operation_back(op)
+            dag_circuit.apply_operation_back(op[0], qargs=op[1])
 
 
     return dag_circuit.node_counter
 
 
-def clone_dag_without_gates(dag_circuit):
-    compiled_dag = DAGCircuit()
-    # compiled_dag.basis = copy.deepcopy(dag_circuit.basis)
-    # compiled_dag.gates = copy.deepcopy(dag_circuit.gates)
-    # compiled_dag.add_qreg(QuantumRegister(get_dag_nr_qubits(dag_circuit), "q"))
-    # compiled_dag.add_creg(ClassicalRegister(get_dag_nr_qubits(dag_circuit), "c"))
-
-    compiled_dag.add_qreg(QuantumRegister(dag_circuit.num_qubits(), "q"))
-    compiled_dag.add_creg(ClassicalRegister(dag_circuit.num_clbits(), "c"))
-
-    return compiled_dag
-
-
-def comp_cnot_gate_list(qub1, qub2, inverse_cnot = False):
+def comp_cnot_gate_list(qub1, qub2, quant_reg, inverse_cnot = False):
     ret = []
 
-    # if not inverse_cnot:
-    #     ret.append(DAGNode({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None}))
-    # else:
-    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub1)], "params": [0, math.pi]}))
-    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub2)], "params": [0, math.pi]}))
-    #
-    #     ret.append(DAGNode({"name": "cx", "qargs": [("q", qub1), ("q", qub2)], "params": None}))
-    #
-    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub1)], "params": [0, math.pi]}))
-    #     ret.append(DAGNode({"name": "u2", "qargs": [("q", qub2)], "params": [0, math.pi]}))
+    from qiskit.extensions.standard import HGate, CnotGate
 
     if not inverse_cnot:
-        ret.append(DAGNode(
-            {"name": "cx", "qargs": [qub1, qub2],
-             "params": None}))
+        ret.append([CnotGate(), [quant_reg[qub1], quant_reg[qub2]]])
     else:
-        ret.append(DAGNode(
-            {"name": "u2", "qargs": [qub1], "params": [0, math.pi]}))
-        ret.append(DAGNode(
-            {"name": "u2", "qargs": [qub2], "params": [0, math.pi]}))
+        ret.append([HGate(), [quant_reg[qub1]]])
+        ret.append([HGate(), [quant_reg[qub2]]])
 
-        ret.append(DAGNode(
-            {"name": "cx", "qargs": [[qub1, qub2]],
-             "params": None}))
+        ret.append([CnotGate(), [quant_reg[qub1], quant_reg[qub2]]])
 
-        ret.append(DAGNode(
-            {"name": "u2", "qargs": [qub1], "params": [0, math.pi]}))
-        ret.append(DAGNode(
-            {"name": "u2", "qargs": [qub2], "params": [0, math.pi]}))
+        ret.append([HGate(), [quant_reg[qub1]]])
+        ret.append([HGate(), [quant_reg[qub2]]])
 
     return ret
 

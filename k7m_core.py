@@ -1,12 +1,9 @@
-# Include any Python modules needed for your implementation here
-import networkx as nx
-import math
-import sympy
-import collections
-import numpy
 import copy
 
+import qiskit
+
 from qiskit.transpiler.basepasses import TransformationPass
+from qiskit.converters import circuit_to_dag, dag_to_circuit
 
 from k7m_coupling import K7MCoupling
 from k7m_positions import K7MPositions
@@ -33,7 +30,10 @@ class K7MCompiler(TransformationPass):
         }
 
 
-    def run(self, dag_circuit):
+
+    def run(self, quantum_circuit):
+
+        dag_circuit = circuit_to_dag(quantum_circuit)
 
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
@@ -57,7 +57,7 @@ class K7MCompiler(TransformationPass):
         # Clean the positions
         self.positions_obj = None
 
-        return compiled_dag
+        return dag_to_circuit(compiled_dag)
 
         # '''
         #     It is possible to collect all configurations encountered
@@ -148,12 +148,12 @@ class K7MCompiler(TransformationPass):
         '''
             Initialise the stack and the compiled solution
         '''
-        dag_circuit = gs.add_signatures_to_circuit(dag_circuit)
-        compiled_dag = None
+        compiled_dag = dag_circuit
         if not dry_run:
-            compiled_dag = gs.clone_dag_without_gates(dag_circuit)
-        else:
-            compiled_dag = dag_circuit
+            compiled_dag = qiskit.dagcircuit.DAGCircuit()
+            compiled_dag.add_qreg(self.positions_obj.quantum_reg)
+            compiled_dag.add_creg(qiskit.ClassicalRegister(dag_circuit.num_clbits(), "c"))
+
 
         coupling_edge_idx = 0
 
@@ -177,14 +177,10 @@ class K7MCompiler(TransformationPass):
                 if not dry_run:
                     if translated_op.name in ["u1", "u2", "u3"]:
                         # TODO: Not necessary. Was used here for speed purposes.
-                        gs.append_ops_to_dag(compiled_dag, [translated_op])
+                        # gs.append_ops_to_dag(compiled_dag, [translated_op.op, translated_op.qargs])
+                        compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
                     else:
-                        # compiled_dag.apply_operation_back(translated_op["name"],
-                        #                                   translated_op["qargs"],
-                        #                                   translated_op["cargs"],
-                        #                                   translated_op["params"],
-                        #                                   translated_op["condition"])
-                        compiled_dag.apply_operation_back(translated_op)
+                        compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
             else:
                 '''
                     Found a CNOT:
@@ -198,13 +194,17 @@ class K7MCompiler(TransformationPass):
 
                 if self.coupling_obj.is_pair(qub1, qub2):
                     # can be directly implemented
-                    gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                    gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
+                                                              self.positions_obj.quantum_reg,
+                                                              inverse_cnot = False)
                     additional_cost = self.global_operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
                 elif self.coupling_obj.is_pair(qub2, qub1):
                     # needs a reversed cnot
-                    gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                    gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
+                                                              self.positions_obj.quantum_reg,
+                                                              inverse_cnot = True)
                     additional_cost = self.global_operation_costs["rev_cnot"]
                     # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
@@ -241,7 +241,7 @@ class K7MCompiler(TransformationPass):
                         # do not compute routes
                         # but make an inverse cnot
                         if not dry_run:
-                            gates_to_insert += gs.comp_cnot_gate_list(start_phys_q_2, start_phys_q_1, inverse_cnot = True)
+                            gates_to_insert += gs.comp_cnot_gate_list(start_phys_q_2, start_phys_q_1, self.positions_obj.quantum_reg, inverse_cnot = True)
 
                     else:
                         if start_phys_q_1 != stop_phys_q1:
@@ -307,14 +307,18 @@ class K7MCompiler(TransformationPass):
 
                     if self.coupling_obj.is_pair(qub1, qub2):
                         if not dry_run:
-                            gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2, inverse_cnot = False)
+                            gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
+                                                                      self.positions_obj.quantum_reg,
+                                               inverse_cnot = False)
                         additional_cost += self.global_operation_costs["ok"]
-                        # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
+                        print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
                     elif self.coupling_obj.is_pair(qub2, qub1):
                         if not dry_run:
-                            gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1, inverse_cnot = True)
+                            gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
+                                                                      self.positions_obj.quantum_reg,
+                                                                      inverse_cnot = True)
                         additional_cost += self.global_operation_costs["rev_cnot"]
-                        # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
+                        print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
                 if not dry_run:
                     gs.append_ops_to_dag(compiled_dag, gates_to_insert)
@@ -373,10 +377,13 @@ class K7MCompiler(TransformationPass):
                     The CNOTs are always according to the correct coupling graph
                     """
                     route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
+                                                              self.positions_obj.quantum_reg,
                                                               inverse_cnot=False)
                     route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
+                                                              self.positions_obj.quantum_reg,
                                                               inverse_cnot=True)
                     route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
+                                                              self.positions_obj.quantum_reg,
                                                               inverse_cnot=False)
 
                 qub1 = qtmp
