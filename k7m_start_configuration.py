@@ -293,9 +293,10 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
                 # evaluate the cost of the cnots touching the qubits before limit
                 sume, skipped = eval_cx_collection(cx_collection,
-                                                   order, limit,
+                                                   order,
+                                                   limit,
                                                    coupling_object,
-                                                   attenuate = True)
+                                                   parameters["attenuate"])
 
                 # print("check", qubit, "tmp sum", sume, "order", order)
 
@@ -305,13 +306,13 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
                 # 31.08.2018
                 # if limit < nrq / parameter_qubit_increase_factor:
                 #     # this condition is checked if the cost should be maximised -> towards start of permutation
-                #     sume -= (skipped * parameter_skipped_cnot_penalty)
+                #     sume -= (skipped * parameters["skipped_cnot_penalty"])
                 #     condition = sume > hold_sum
                 # else:
-                #     sume += (skipped * parameter_skipped_cnot_penalty)
+                #     sume += (skipped * parameters["skipped_cnot_penalty"])
                 #     condition = sume < hold_sum
 
-                # sume += (skipped * parameter_skipped_cnot_penalty)
+                # sume += (skipped * parameters["skipped_cnot_penalty"])
                 condition = (sume < hold_sum)
 
                 # if the condition is true

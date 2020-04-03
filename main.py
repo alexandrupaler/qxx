@@ -16,11 +16,11 @@ def main():
 
     # Load the circuit
     circ = QuantumCircuit.from_qasm_file("./circuits/random0_n5_d5.qasm")
-    print(circ.draw(output="text", fold=-1))
+    # print(circ.draw(output="text", fold=-1))
 
     # Load the coupling map
     # TODO: Test small circuits on large graphs. Was working before refactor.
-    name = "./layouts/circle_reg_q16.json"
+    name = "./layouts/circle_reg_q5.json"
     with open(name, 'r') as infile:
         temp = json.load(infile)
 
@@ -48,6 +48,12 @@ def main():
         "qubit_increase_factor": 3,  # nrq + 1#1.4
 
         "skipped_cnot_penalty": 200,
+
+        "attenuate" : True,
+
+        "random_initial" : False,
+
+        "dry_run" : False
     }
 
     k7m = K7MCompiler(coupling, gate_costs)

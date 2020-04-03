@@ -3,33 +3,22 @@ import copy
 
 import qiskit
 
-from k7m_start_configuration import cuthill_order
-
 class K7MPositions:
-    def __init__(self, dag_circuit, parameters, random=False):
+    def __init__(self, dag_circuit,
+                 parameters,
+                 used_nisq_qubits
+                 ):
 
         '''
             Parameters for search
         '''
-        self.parameters = parameters
+        # self.parameters = parameters
 
         """
         The resulting circuit has a maximum number of qubits of the NISQ chip
         """
         self.quantum_reg = qiskit.QuantumRegister(parameters["nisq_qubits"], "q")
         self.classic_reg = qiskit.ClassicalRegister(parameters["nisq_qubits"], "c")
-
-
-        # if nrq > 6:
-        # y = cuthill_order(dag_circuit, coupling_object, self.parameters)
-        # else:
-
-        used_nisq_qubits = list(range(dag_circuit.num_qubits()))
-        if random:
-            # Only the first positions which correspond to the circuit qubits
-            used_nisq_qubits = numpy.random.permutation(parameters["nisq_qubits"])
-            used_nisq_qubits = used_nisq_qubits[:dag_circuit.num_qubits()]
-
 
         '''
             Current logical qubit position on physical qubits

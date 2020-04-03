@@ -1,5 +1,5 @@
 import copy
-
+import numpy
 import qiskit
 
 from qiskit.transpiler.basepasses import TransformationPass
@@ -9,6 +9,9 @@ from k7m_coupling import K7MCoupling
 from k7m_positions import K7MPositions
 
 import k7m_gate_utils as gs
+
+from k7m_start_configuration import cuthill_order
+
 
 class K7MCompiler(TransformationPass):
 
@@ -35,14 +38,24 @@ class K7MCompiler(TransformationPass):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
+        # used_nisq_qubits = cuthill_order(dag_circuit, self.coupling_obj, parameters)
+
+        used_nisq_qubits = list(range(dag_circuit.num_qubits()))
+        if parameters["random_initial"]:
+            # Only the first positions which correspond to the circuit qubits
+            used_nisq_qubits = numpy.random.permutation(
+                parameters["nisq_qubits"])
+            used_nisq_qubits = used_nisq_qubits[:dag_circuit.num_qubits()]
+
+
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
                                               parameters,
-                                              random = False)
+                                              used_nisq_qubits)
         '''
             Start with an initial configuration
         '''
-        compiled_dag, back_stack = self.find_solution(dag_circuit, dry_run= False)
+        compiled_dag, back_stack = self.find_solution(dag_circuit, parameters["dry_run"])
 
         """
             Returning here stops backtracking -> A full backtrack is not available,
