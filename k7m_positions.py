@@ -13,8 +13,11 @@ class K7MPositions:
         '''
         self.parameters = parameters
 
-        self.quantum_reg = qiskit.QuantumRegister(dag_circuit.num_qubits(), "q")
-        self.classic_reg = qiskit.ClassicalRegister(dag_circuit.num_qubits(), "c")
+        """
+        The resulting circuit has a maximum number of qubits of the NISQ chip
+        """
+        self.quantum_reg = qiskit.QuantumRegister(parameters["nisq_qubits"], "q")
+        self.classic_reg = qiskit.ClassicalRegister(parameters["nisq_qubits"], "c")
 
 
         # if nrq > 6:
@@ -52,22 +55,15 @@ class K7MPositions:
 
 
     def update_configuration(self, route_phys):
-        # TODO: FIX IT!!!
-        """
-        Due to refactoring this a very complicated way to update
-        :param route_phys: route of physical qubits on the coupling graph
-        :return:
-        """
-        route_circuit = [self.pos_phys_to_circuit[x] for x in route_phys]
 
-        if len(route_circuit) == 0:
+        if len(route_phys) == 0:
             return
 
-        route_circuit_backup = copy.deepcopy(route_circuit)
+        route_phys_backup = copy.deepcopy(route_phys)
 
         current_mapping = []
-        for route_circ_el in route_circuit_backup:
-            current_mapping.append(self.pos_circuit_to_phys[route_circ_el])
+        for route_phys_el in route_phys_backup:
+            current_mapping.append(self.pos_phys_to_circuit[route_phys_el])
 
         """
             Because there is a chain of SWAPs being simulated a chain
@@ -75,16 +71,50 @@ class K7MPositions:
             Thus, route_circuit_backup is a circular permuation
         """
         # Add the first element to the end
-        route_circuit_backup.append(route_circuit_backup[0])
+        route_phys_backup.append(route_phys_backup[0])
         # Simulate the permutation by reading from 1 to end (previous start)
-        route_circuit_backup = route_circuit_backup[1:]
+        route_phys_backup = route_phys_backup[1:]
 
         # Update the circuit to phys
-        for i in range(0, len(route_circuit_backup)):
-            self.pos_circuit_to_phys[route_circuit_backup[i]] = current_mapping[i]
+        for i in range(0, len(route_phys_backup)):
+            self.pos_phys_to_circuit[route_phys_backup[i]] = current_mapping[i]
 
         # Calculate the inverse dictionary - phys to circuit
-        self.pos_phys_to_circuit.update({v: k for k, v in self.pos_circuit_to_phys.items()})
+        self.pos_circuit_to_phys.update({v: k for k, v in self.pos_phys_to_circuit.items()})
+
+        # # TODO: FIX IT!!!
+        # """
+        # Due to refactoring this a very complicated way to update
+        # :param route_phys: route of physical qubits on the coupling graph
+        # :return:
+        # """
+        # route_circuit = [self.pos_phys_to_circuit[x] for x in route_phys]
+        #
+        # if len(route_circuit) == 0:
+        #     return
+        #
+        # route_circuit_backup = copy.deepcopy(route_circuit)
+        #
+        # current_mapping = []
+        # for route_circ_el in route_circuit_backup:
+        #     current_mapping.append(self.pos_circuit_to_phys[route_circ_el])
+        #
+        # """
+        #     Because there is a chain of SWAPs being simulated a chain
+        #     of logical qubits 1,2,3,4,5 will become 2,3,4,5,1
+        #     Thus, route_circuit_backup is a circular permuation
+        # """
+        # # Add the first element to the end
+        # route_circuit_backup.append(route_circuit_backup[0])
+        # # Simulate the permutation by reading from 1 to end (previous start)
+        # route_circuit_backup = route_circuit_backup[1:]
+        #
+        # # Update the circuit to phys
+        # for i in range(0, len(route_circuit_backup)):
+        #     self.pos_circuit_to_phys[route_circuit_backup[i]] = current_mapping[i]
+        #
+        # # Calculate the inverse dictionary - phys to circuit
+        # self.pos_phys_to_circuit.update({v: k for k, v in self.pos_circuit_to_phys.items()})
 
 
     def translate_op_to_coupling_map(self, op):

@@ -53,7 +53,7 @@ def main():
     k7m = K7MCompiler(coupling, gate_costs)
     result = k7m.run(circ, parameters)
 
-    print(result.draw(output="text", fold=-1))
+    print(result.draw(output="text", fold=-1, idle_wires=False))
 
 
 if __name__ == '__main__':
