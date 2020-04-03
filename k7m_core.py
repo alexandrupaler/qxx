@@ -33,7 +33,15 @@ class K7MCompiler(TransformationPass):
 
     def run(self, quantum_circuit):
 
-        dag_circuit = circuit_to_dag(quantum_circuit)
+        dag_circuit = qiskit.dagcircuit.DAGCircuit()
+        dag_circuit.name = quantum_circuit.name
+        for register in quantum_circuit.qregs:
+            dag_circuit.add_qreg(register)
+        for register in quantum_circuit.cregs:
+            dag_circuit.add_creg(register)
+
+        for instruction, qargs, cargs in quantum_circuit.data:
+            dag_circuit.apply_operation_back(instruction.copy(), qargs, cargs, instruction.condition)
 
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
@@ -42,8 +50,7 @@ class K7MCompiler(TransformationPass):
         '''
             Start with an initial configuration
         '''
-        compiled_dag, backtracking_stack = self.find_solution(dag_circuit,
-                                                         dry_run= False)
+        compiled_dag, backtracking_stack = self.find_solution(dag_circuit, dry_run= False)
 
         """
             Returning here stops backtracking -> A full backtrack is not available,
@@ -57,7 +64,18 @@ class K7MCompiler(TransformationPass):
         # Clean the positions
         self.positions_obj = None
 
-        return dag_to_circuit(compiled_dag)
+        # return dag_to_circuit(compiled_dag)
+
+        name = compiled_dag.name or None
+        circuit = qiskit.QuantumCircuit(*compiled_dag.qregs.values(), *compiled_dag.cregs.values(), name=name)
+
+        for node in compiled_dag.topological_op_nodes():
+            # Get arguments for classical control (if any)
+            inst = node.op.copy()
+            inst.condition = node.condition
+            circuit._append(inst, node.qargs, node.cargs)
+
+        return circuit
 
         # '''
         #     It is possible to collect all configurations encountered
@@ -152,7 +170,7 @@ class K7MCompiler(TransformationPass):
         if not dry_run:
             compiled_dag = qiskit.dagcircuit.DAGCircuit()
             compiled_dag.add_qreg(self.positions_obj.quantum_reg)
-            compiled_dag.add_creg(qiskit.ClassicalRegister(dag_circuit.num_clbits(), "c"))
+            compiled_dag.add_creg(self.positions_obj.classic_reg)
 
 
         coupling_edge_idx = 0
@@ -177,8 +195,8 @@ class K7MCompiler(TransformationPass):
                 if not dry_run:
                     if translated_op.name in ["u1", "u2", "u3"]:
                         # TODO: Not necessary. Was used here for speed purposes.
-                        # gs.append_ops_to_dag(compiled_dag, [translated_op.op, translated_op.qargs])
-                        compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
+                        gs.append_ops_to_dag(compiled_dag, [translated_op])
+                        # compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
                     else:
                         compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
             else:
@@ -486,11 +504,11 @@ class K7MCompiler(TransformationPass):
 
 
 def get_cnot_qubits(op):
-    qubit1 = op.qargs[0][1]
+    qubit1 = op.qargs[0].index
 
     qubit2 = -1
     if len(op.qargs) == 2:
-        qubit2 = op.qargs[1][1]
+        qubit2 = op.qargs[1].index
 
     return qubit1, qubit2
 

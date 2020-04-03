@@ -26,6 +26,7 @@ class K7MPositions:
         }
 
         self.quantum_reg = qiskit.QuantumRegister(dag_circuit.num_qubits(), "q")
+        self.classic_reg = qiskit.ClassicalRegister(dag_circuit.num_qubits(), "c")
 
 
         # if nrq > 6:
@@ -100,48 +101,23 @@ class K7MPositions:
         '''
             Translate qargs and cargs depending on the position of the logical qubit
         '''
-
         translated_op = copy.deepcopy(op)
-
-        # translated_op = {}
-        # translated_op["name"] = op.name
-        # translated_op["type"] = op.type
-
         # TODO: deepcopy needed?
         # translated_op["params"] = copy.deepcopy(op.params)
         # translated_op["condition"] = copy.deepcopy(op.condition)
 
-        translated_op.qargs = []
-        # TODO: FIX IT!!!
+        translated_op.qargs.clear()
         for qubit_args in op.qargs:
-            x = self.pos_circuit_to_phys[qubit_args[1]]
-            # old code below
-            # translated_op.qargs.append(("q", x))
-            # new code below
-            translated_op.qargs.append((self.quantum_reg, x))
+            x = self.pos_circuit_to_phys[qubit_args.index]
+            translated_op.qargs.append(qiskit.circuit.Qubit(self.quantum_reg, x))
 
-        # TODO: Leave untranslated for the moment?
-        # translated_op["cargs"] = copy.deepcopy(op.cargs)
+        translated_op.cargs.clear()
+        for carg in op.cargs:
+            x = self.pos_circuit_to_phys[carg.index]
+            translated_op.cargs.append(qiskit.circuit.Clbit(self.classic_reg, x))
 
         return translated_op
 
-        # translated_op = {}
-        # translated_op["name"] = op.name
-        # translated_op["type"] = op.type
-        #
-        # # TODO: deepcopy needed?
-        # translated_op["params"] = copy.deepcopy(op.params)
-        # # translated_op["condition"] = copy.deepcopy(op.condition)
-        #
-        # translated_op["qargs"] = []
-        # for qubit_args in op.qargs:
-        #     x = self.current_positions[qubit_args[1]]
-        #     translated_op["qargs"].append(("q", x))
-        #
-        # # TODO: Leave untranslated for the moment?
-        # translated_op["cargs"] = copy.deepcopy(op.cargs)
-        #
-        # return translated_op
 
     def debug_configuration(self):
         print("-------------------")
