@@ -60,7 +60,7 @@ def append_ops_to_dag(dag_circuit, op_list):
             # TODO: FIX IT!!!
             # dag_circuit.apply_operation_back(op, op.qargs)
             # dag_circuit.apply_operation_back(op)
-            dag_circuit.apply_operation_back(op.op, qargs=op.qargs)
+            dag_circuit.apply_operation_back(op.op, qargs=op.qargs, cargs=op.cargs)
 
 
     return dag_circuit.node_counter

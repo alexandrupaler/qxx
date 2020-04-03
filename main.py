@@ -34,6 +34,7 @@ def main():
     """
     k7m = K7MCompiler(coupling, gate_costs)
     result = k7m.run(circ)
+
     print(result.draw(output="text", line_length=-1))
 
 

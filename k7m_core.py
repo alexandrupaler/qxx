@@ -33,15 +33,7 @@ class K7MCompiler(TransformationPass):
 
     def run(self, quantum_circuit):
 
-        dag_circuit = qiskit.dagcircuit.DAGCircuit()
-        dag_circuit.name = quantum_circuit.name
-        for register in quantum_circuit.qregs:
-            dag_circuit.add_qreg(register)
-        for register in quantum_circuit.cregs:
-            dag_circuit.add_creg(register)
-
-        for instruction, qargs, cargs in quantum_circuit.data:
-            dag_circuit.apply_operation_back(instruction.copy(), qargs, cargs, instruction.condition)
+        dag_circuit = circuit_to_dag(quantum_circuit)
 
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
@@ -50,7 +42,7 @@ class K7MCompiler(TransformationPass):
         '''
             Start with an initial configuration
         '''
-        compiled_dag, backtracking_stack = self.find_solution(dag_circuit, dry_run= False)
+        compiled_dag, back_stack = self.find_solution(dag_circuit, dry_run= False)
 
         """
             Returning here stops backtracking -> A full backtrack is not available,
@@ -64,18 +56,17 @@ class K7MCompiler(TransformationPass):
         # Clean the positions
         self.positions_obj = None
 
-        # return dag_to_circuit(compiled_dag)
+        return dag_to_circuit(compiled_dag)
 
-        name = compiled_dag.name or None
-        circuit = qiskit.QuantumCircuit(*compiled_dag.qregs.values(), *compiled_dag.cregs.values(), name=name)
-
-        for node in compiled_dag.topological_op_nodes():
-            # Get arguments for classical control (if any)
-            inst = node.op.copy()
-            inst.condition = node.condition
-            circuit._append(inst, node.qargs, node.cargs)
-
-        return circuit
+        # name = compiled_dag.name or None
+        # circuit = qiskit.QuantumCircuit(*compiled_dag.qregs.values(), *compiled_dag.cregs.values(), name=name)
+        #
+        # for node in compiled_dag.topological_op_nodes():
+        #     # Get arguments for classical control (if any)
+        #     inst = node.op.copy()
+        #     inst.condition = node.condition
+        #     circuit._append(inst, node.qargs, node.cargs)
+        # return circuit
 
         # '''
         #     It is possible to collect all configurations encountered
@@ -83,7 +74,7 @@ class K7MCompiler(TransformationPass):
         # '''
         # collect_config = {}
         # # analyse saved configurations
-        # for el in backtracking_stack:
+        # for el in back_stack:
         #     kkk = hash(frozenset(el[0].items()))
         #     if kkk not in collect_config:
         #         collect_config[kkk] = (0, el[0])
@@ -98,11 +89,11 @@ class K7MCompiler(TransformationPass):
         # for k in collect_config:
         #     # print(collect_config[k][0], ":", collect_config[k][1])
         #     current_who_at_index = {v: k for k, v in collect_config[k][1].items()}
-        #     tmp_dag, backtracking_stack = find_solution(coupling_map, coupling_object, collect_config[k][1],
+        #     tmp_dag, back_stack = find_solution(coupling_map, coupling_object, collect_config[k][1],
         #                                                      current_who_at_index, dag_circuit, True)
         #
         #     # fourth element in the tuple is the cost
-        #     tmp_solution_cost = sum(bs[3] for bs in backtracking_stack)
+        #     tmp_solution_cost = sum(bs[3] for bs in back_stack)
         #
         #     # tmp_solution_cost, mapped_ok = check_solution_and_compute_cost(tmp_dag, coupling_map, gate_costs)
         #     if tmp_solution_cost <= min_cost:
@@ -117,7 +108,7 @@ class K7MCompiler(TransformationPass):
         # '''
         # current_who_at_index = {v: k for k, v in collect_config[min_current_positions][1].items()}
         #
-        # compiled_dag, backtracking_stack = find_solution(coupling_map, coupling_object, collect_config[min_current_positions][1],
+        # compiled_dag, back_stack = find_solution(coupling_map, coupling_object, collect_config[min_current_positions][1],
         #                                             current_who_at_index, dag_circuit, False)
         #
         # return compiled_dag
@@ -161,7 +152,7 @@ class K7MCompiler(TransformationPass):
         self.save_first_swaps(dag_circuit)
 
         # Simulate a stack
-        backtracking_stack = []
+        back_stack = []
 
         '''
             Initialise the stack and the compiled solution
@@ -198,7 +189,9 @@ class K7MCompiler(TransformationPass):
                         gs.append_ops_to_dag(compiled_dag, [translated_op])
                         # compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
                     else:
-                        compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
+                        compiled_dag.apply_operation_back(translated_op.op,
+                                                          qargs=translated_op.qargs,
+                                                          cargs=translated_op.cargs)
             else:
                 '''
                     Found a CNOT:
@@ -342,13 +335,13 @@ class K7MCompiler(TransformationPass):
                     gs.append_ops_to_dag(compiled_dag, gates_to_insert)
 
                 # the others are not deep copied
-                backtracking_stack.append((copy.deepcopy(self.positions_obj),
+                back_stack.append((copy.deepcopy(self.positions_obj),
                                            original_op,# gate,
                                            coupling_edge_idx,
                                            additional_cost)
                                           )
 
-        return compiled_dag, backtracking_stack
+        return compiled_dag, back_stack
 
 
     def get_coupling_node_idx(self, qubit):
