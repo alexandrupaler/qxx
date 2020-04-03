@@ -6,37 +6,27 @@ import qiskit
 from k7m_start_configuration import cuthill_order
 
 class K7MPositions:
-    def __init__(self, dag_circuit, coupling_object, random=False):
+    def __init__(self, dag_circuit, parameters, random=False):
 
         '''
             Parameters for search
         '''
-        parameters = {
-            # maximum number of children of a node
-            "max_children" : dag_circuit.num_qubits(),
-            # maximum depth of the search tree
-            # after this depth, the leafs are evaluated and only the path with minimum cost is kept in the tree
-            # thus, the tree is pruned
-            "max_depth" : dag_circuit.num_qubits(),
-            # the first number_of_qubits * this factor the search maximises the cost
-            # afterwards it minimises it
-            "qubit_increase_factor" : 3, # nrq + 1#1.4
-
-            "skipped_cnot_penalty" : 200,
-        }
+        self.parameters = parameters
 
         self.quantum_reg = qiskit.QuantumRegister(dag_circuit.num_qubits(), "q")
         self.classic_reg = qiskit.ClassicalRegister(dag_circuit.num_qubits(), "c")
 
 
         # if nrq > 6:
-        # y = cuthill_order(dag_circuit, coupling_object, parameters)
+        # y = cuthill_order(dag_circuit, coupling_object, self.parameters)
         # else:
-        y = list(range(dag_circuit.num_qubits()))
 
-        # random = True
+        used_nisq_qubits = list(range(dag_circuit.num_qubits()))
+        if random:
+            # Only the first positions which correspond to the circuit qubits
+            used_nisq_qubits = numpy.random.permutation(parameters["nisq_qubits"])
+            used_nisq_qubits = used_nisq_qubits[:dag_circuit.num_qubits()]
 
-        x = numpy.random.permutation(dag_circuit.num_qubits())
 
         '''
             Current logical qubit position on physical qubits
@@ -46,19 +36,19 @@ class K7MPositions:
             There is something similar in Coupling, but I am not using it
         """
         self.pos_circuit_to_phys = {}
-        for i in range(dag_circuit.num_qubits()):
+        for circ_qubit in range(dag_circuit.num_qubits()):
             # configuration[i] = nrq - 1 - i # qubit i@i
-            self.pos_circuit_to_phys[i] = y[i]  # qubit i@i
-            if random:
-                self.pos_circuit_to_phys[i] = x[i]
+            self.pos_circuit_to_phys[circ_qubit] = used_nisq_qubits[circ_qubit]  # qubit i@i
 
-        print("current positions computed", self.pos_circuit_to_phys)
+        print("current circ2phys computed", self.pos_circuit_to_phys)
 
         """
             The reverse dictionary of current_positions
         """
-        self.pos_phys_to_circuit = {v: k for k, v in
-                                    self.pos_circuit_to_phys.items()}
+        self.pos_phys_to_circuit = {k: -1 for k in range(parameters["nisq_qubits"])}
+        for k, v in self.pos_circuit_to_phys.items():
+            self.pos_phys_to_circuit[v] = k
+        print("current phys2circ computed", self.pos_phys_to_circuit)
 
 
     def update_configuration(self, route_phys):

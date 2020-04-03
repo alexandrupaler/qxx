@@ -16,11 +16,11 @@ def main():
 
     # Load the circuit
     circ = QuantumCircuit.from_qasm_file("./circuits/random0_n5_d5.qasm")
-    # print(circ.draw(output="text", line_length=-1))
+    print(circ.draw(output="text", fold=-1))
 
     # Load the coupling map
     # TODO: Test small circuits on large graphs. Was working before refactor.
-    name = "./layouts/circle_reg_q5.json"
+    name = "./layouts/circle_reg_q16.json"
     with open(name, 'r') as infile:
         temp = json.load(infile)
 
@@ -29,13 +29,31 @@ def main():
         for k in kk:
             coupling += [[int(ii), k]]
 
+
     """
         K7M
     """
-    k7m = K7MCompiler(coupling, gate_costs)
-    result = k7m.run(circ)
+    parameters = {
+        # the number of qubits in the device
+        "nisq_qubits" : temp["qubits"],
 
-    print(result.draw(output="text", line_length=-1))
+        # maximum number of children of a node
+        "max_children": circ.n_qubits,
+        # maximum depth of the search tree
+        # after this depth, the leafs are evaluated and only the path with minimum cost is kept in the tree
+        # thus, the tree is pruned
+        "max_depth": circ.n_qubits,
+        # the first number_of_qubits * this factor the search maximises the cost
+        # afterwards it minimises it
+        "qubit_increase_factor": 3,  # nrq + 1#1.4
+
+        "skipped_cnot_penalty": 200,
+    }
+
+    k7m = K7MCompiler(coupling, gate_costs)
+    result = k7m.run(circ, parameters)
+
+    print(result.draw(output="text", fold=-1))
 
 
 if __name__ == '__main__':
