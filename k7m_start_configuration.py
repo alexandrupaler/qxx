@@ -52,17 +52,18 @@ def get_distance_offsets(c1, c2, offsets, coupling_object):
 
 
 def eval_cx_collection(cx_collection,
-                       order,
-                       limit,
+                       local_circuit_to_phys,
+                       phys_qub_idx_limit,
                        coupling_object,
-                       attenuate=False):
+                       attenuate):
     """
     This is the heuristic cost function to evaluate the cost
     for a mapping configuration
     :param cx_collection: list of tuples representing CNOT qubits;
     control/target does not matter
-    :param order: permutation of circuit wires
-    :param limit: qubit index threshold to skip; gates that operate on qubits
+    :param local_circuit_to_phys: permutation of circuit wires
+    :param phys_qub_idx_limit: physical qubit index threshold to skip;
+        gates that operate on qubits
         with index higher than limit are not considered
     :param attenuate: Boolean - if later changes in the layout
     should not affect the beginning of the circuit
@@ -75,31 +76,31 @@ def eval_cx_collection(cx_collection,
     active = 0
     thisturnactive = 0
 
-    for tu in cx_collection:
-        c1 = order[tu[0]]
-        c2 = order[tu[1]]
+    for qubit_tuple in cx_collection:
+        c1 = local_circuit_to_phys[qubit_tuple[0]]
+        c2 = local_circuit_to_phys[qubit_tuple[1]]
 
-        if c1 > limit or c2 > limit:
+        if c1 > phys_qub_idx_limit or c2 > phys_qub_idx_limit:
             # increment the number of skipped gates from the collection
             skipped += 1
         else:
             active += 1
 
-            if c1 == limit or c2 == limit:
+            if c1 == phys_qub_idx_limit or c2 == phys_qub_idx_limit:
                 thisturnactive += 1
 
     offsets = []
-    for qi in range(limit + 1):
+    for qi in range(phys_qub_idx_limit + 1):
         offsets.append(0)
 
-    for tu in cx_collection:
-        c1 = order[tu[0]]
-        c2 = order[tu[1]]
+    for qubit_tuple in cx_collection:
+        c1 = local_circuit_to_phys[qubit_tuple[0]]
+        c2 = local_circuit_to_phys[qubit_tuple[1]]
 
         # increment the index counter of the cnot gate
         t += 1
 
-        if c1 > limit or c2 > limit:
+        if c1 > phys_qub_idx_limit or c2 > phys_qub_idx_limit:
             continue
 
         # this is a linear distance between the qubits
@@ -174,10 +175,10 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     :return:
     """
 
-    nrq = dag_circuit.width()
+    nrq = dag_circuit.num_qubits()
 
     # the start configuration is 0...nrq
-    order = list(range(nrq))
+    # order = list(range(nrq))
 
     #
     # Create a list of qubit index tuples representing the cnots
@@ -193,15 +194,11 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
         # gate = dag_circuit.multi_graph.nodes[node]
         # gate = nodes_collection[node]
 
-        # if gate["name"] not in ["cx"]:
-        if gate.name not in ["cx"]:
+        if gate.name not in ["cx", "CX"]:
             continue
 
-        # q1 = int(gate["qargs"][0][1])
-        # q2 = int(gate["qargs"][1][1])
-        #
-        q1 = int(gate.qargs[0][1])
-        q2 = int(gate.qargs[1][1])
+        q1 = int(gate.qargs[0].index)
+        q2 = int(gate.qargs[1].index)
 
         cx_collection.append((q1, q2))
 
@@ -222,7 +219,8 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     options_tree.add_node(maximum_nr_node, name=0, cost=0)
     maximum_nr_node += 1
 
-    order = [math.inf for x in order]
+    # order = [math.inf for x in order]
+    curr_mapping = [math.inf] * nrq
 
     # take each index at a time.
     # start from 1
@@ -260,7 +258,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
         for prev_leaf in all_leafs:
             # setup ordering based on parents of this node
-            cuthill_set_partial_perm(limit, options_tree, order, prev_leaf)
+            cuthill_set_partial_perm(limit, options_tree, curr_mapping, prev_leaf)
 
             #where to store candidates
             local_minimas = []
@@ -273,27 +271,27 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
             # # which is a ratio (e.g. 1/3) of the total number of qubits
             # # the idea being that initially, up to this index limit, the costs have to increase
             # # afterwards the costs have to decrease
-            # if limit < nrq / parameter_qubit_increase_factor:
+            # if limit < nrq / parameters["qubit_increase_factor"]:
             #     hold_sum = - math.inf
 
             leaf_ancestors = [options_tree.nodes[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
             leaf_ancestors.append(options_tree.nodes[prev_leaf]["name"])
 
             # Use all the qubits which are not predecessors of the current leaf
-            for qubit in range(nrq):
+            for circ_qubit in range(nrq):
 
-                if qubit in leaf_ancestors:
+                if circ_qubit in leaf_ancestors:
                     continue
 
                 #place previously unused qubit on index limit
-                order[qubit] = limit
+                curr_mapping[circ_qubit] = limit
 
                 # the cost of the leaf is stored in prev_sum
                 prev_sum = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
                 sume, skipped = eval_cx_collection(cx_collection,
-                                                   order,
+                                                   curr_mapping,
                                                    limit,
                                                    coupling_object,
                                                    parameters["attenuate"])
@@ -321,15 +319,15 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
                     if condition:
                         hold_sum = sume
                         local_minimas.clear()
-                        local_minimas.append(qubit)
+                        local_minimas.append(circ_qubit)
                     elif sume == hold_sum and len(local_minimas) < parameters["max_children"]:
-                        local_minimas.append(qubit)
+                        local_minimas.append(circ_qubit)
 
                 # reset placement
-                order[qubit] = math.inf
+                curr_mapping[circ_qubit] = math.inf
 
             #reset entire ordering
-            cuthill_set_partial_perm(math.inf, options_tree, order, prev_leaf)
+            cuthill_set_partial_perm(math.inf, options_tree, curr_mapping, prev_leaf)
 
             # add leafs to the node that generated these permutations
             for lmin in local_minimas:
@@ -350,12 +348,12 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
     # the final order permutation is computed.
     # this will be returned and used by the placement
-    cuthill_set_partial_perm(nrq, options_tree, order, minnode)
+    cuthill_set_partial_perm(nrq, options_tree, curr_mapping, minnode)
 
     # print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
     # print(order)
 
-    return order
+    return curr_mapping
 
 def cuthill_evaluate_leafs(all_leafs, options_tree):
     """
@@ -379,12 +377,12 @@ def cuthill_evaluate_leafs(all_leafs, options_tree):
     return minnode, mincost
 
 
-def cuthill_set_partial_perm(limit, options_tree, order, prev_leaf):
+def cuthill_set_partial_perm(limit, options_tree, curr_mapping, prev_leaf):
     """
 
     :param limit:
     :param options_tree:
-    :param order:
+    :param curr_mapping:
     :param prev_leaf:
     :return:
     """
@@ -393,7 +391,7 @@ def cuthill_set_partial_perm(limit, options_tree, order, prev_leaf):
         position = limit - 1
 
     # this node is placed at the index position
-    order[options_tree.nodes[prev_leaf]["name"]] = position
+    curr_mapping[options_tree.nodes[prev_leaf]["name"]] = position
 
     # save the prev_leaf index
     p_prev_leaf = prev_leaf
@@ -407,6 +405,6 @@ def cuthill_set_partial_perm(limit, options_tree, order, prev_leaf):
             # decrement position
             position -= 1
         # place current node at the lower position
-        order[options_tree.nodes[p_prev_leaf]["name"]] = position
+        curr_mapping[options_tree.nodes[p_prev_leaf]["name"]] = position
 
 

@@ -6,14 +6,14 @@ import qiskit
 class K7MPositions:
     def __init__(self, dag_circuit,
                  parameters,
-                 used_nisq_qubits
+                 initial_mapping
                  ):
+        """
 
-        '''
-            Parameters for search
-        '''
-        # self.parameters = parameters
-
+        :param dag_circuit:
+        :param parameters:
+        :param initial_mapping:
+        """
         """
         The resulting circuit has a maximum number of qubits of the NISQ chip
         """
@@ -30,7 +30,7 @@ class K7MPositions:
         self.pos_circuit_to_phys = {}
         for circ_qubit in range(dag_circuit.num_qubits()):
             # configuration[i] = nrq - 1 - i # qubit i@i
-            self.pos_circuit_to_phys[circ_qubit] = used_nisq_qubits[circ_qubit]  # qubit i@i
+            self.pos_circuit_to_phys[circ_qubit] = initial_mapping[circ_qubit]  # qubit i@i
 
         print("current circ2phys computed", self.pos_circuit_to_phys)
 

@@ -38,20 +38,20 @@ class K7MCompiler(TransformationPass):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
-        # used_nisq_qubits = cuthill_order(dag_circuit, self.coupling_obj, parameters)
+        initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, parameters)
 
-        used_nisq_qubits = list(range(dag_circuit.num_qubits()))
+        # initial_mapping = list(range(dag_circuit.num_qubits()))
         if parameters["random_initial"]:
             # Only the first positions which correspond to the circuit qubits
-            used_nisq_qubits = numpy.random.permutation(
+            initial_mapping = numpy.random.permutation(
                 parameters["nisq_qubits"])
-            used_nisq_qubits = used_nisq_qubits[:dag_circuit.num_qubits()]
+            initial_mapping = initial_mapping[:dag_circuit.num_qubits()]
 
 
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
                                               parameters,
-                                              used_nisq_qubits)
+                                              initial_mapping)
         '''
             Start with an initial configuration
         '''
