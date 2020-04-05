@@ -1,9 +1,12 @@
 ## K7M - a method to map circuits to NISQ
 
-K7M is a heuristic to find a good initial mapping of qubits such that a small 
-number of SWAPS is introduced. The general idea of K7M is that the initial
- placement of the qubits influences to a great extent the total cost of 
- compiling a circuit for NISQ. Thus, it seems reasonable to:
+K7M is a framework for investigating heuristics to map quantum circuits to NISQ.
+In its current implementation is was used to find a good initial mapping of
+ qubits such that a low number of SWAPS is introduced.
+ 
+The general idea of K7M is that the initial placement of the qubits influences 
+to a great extent the total cost of  compiling a circuit for NISQ. Thus, it 
+seems reasonable to:
 1) invest more computational power to find an initial placement using a 
 lookahead heuristic that estimates as good  as possible the cost of the 
 fully mapped circuit;
@@ -11,8 +14,28 @@ fully mapped circuit;
 computational power to improve the cost of the placement heuristic.
 
 
-The heuristic and lookahead algorithm were used for 
-https://arxiv.org/abs/1811.08985
+The K7M algorithm were briefly explained and used for some results in
+ https://arxiv.org/abs/1811.08985
+
+
+Please use the following citation, if this software in this repository was useful to your research.
+
+```
+@inproceedings{paler2019influence,
+  title={On the influence of initial qubit placement during NISQ circuit compilation},
+  author={Paler, Alexandru},
+  booktitle={International Workshop on Quantum Technology and Optimization Problems},
+  pages={207--217},
+  year={2019},
+  organization={Springer}
+}
+```
+
+For the moment, K7M can be used as a `TransformationPass` optimizer from Qiskit.
+The algorithm is controlled by parameters which are specified in a dictionary.
+*TODO: Document the parameters.*
+
+A simple usage example can be seen in [main.py](main.py).
 
 
 ### Original description of K7M
@@ -64,3 +87,6 @@ a) Clustering: choosing the coupling graph edge closest to previous ones
 where CNOTs were executed.
 b) Preferring to map circuit CNOTs on the direct edges of the graph
 (such that Hadamards are not introduced).
+
+PS: The name of the heuristic is borrowed from the 
+[Renault engine](https://en.wikipedia.org/wiki/Renault_K-Type_engine).

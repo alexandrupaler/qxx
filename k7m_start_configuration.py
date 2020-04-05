@@ -39,9 +39,6 @@ def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys, coupl
     if not maxq in offsets.keys():
         offsets[maxq] = 0
 
-    # phys_idx1 = local_circuit_to_phys[coupling_object.coupling.physical_qubits[circ_q1]]
-    # phys_idx2 = local_circuit_to_phys[coupling_object.coupling.physical_qubits[circ_q2]]
-
     phys_idx1 = local_circuit_to_phys[circ_q1]
     phys_idx2 = local_circuit_to_phys[circ_q2]
 

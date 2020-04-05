@@ -71,8 +71,8 @@ class K7MPositions:
                                          if v != -1})
 
 
-        print("current circ2phys: ", self.pos_circuit_to_phys)
-        print("current phys2circ: ", self.pos_phys_to_circuit)
+        # print("current circ2phys: ", self.pos_circuit_to_phys)
+        # print("current phys2circ: ", self.pos_phys_to_circuit)
 
         # # TODO: FIX IT!!!
         # """
