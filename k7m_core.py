@@ -15,47 +15,41 @@ from k7m_start_configuration import cuthill_order
 
 class K7MCompiler(TransformationPass):
 
-    def __init__(self, coupling_map, gate_costs):
+    def __init__(self, coupling_map, parameters):
 
-        # self.gate_costs = gate_costs
+        self.parameters = parameters
 
-        self.coupling_obj = K7MCoupling(coupling_map, gate_costs)
+        self.coupling_obj = K7MCoupling(coupling_map, parameters)
 
         self.positions_obj = None
 
-        self.global_operation_costs = {
-            "swap": 34,
-            "rev_cnot": 4,
-            "ok": 0,
-            # update the costs
-            "rev_cnot" : 4 * gate_costs["u2"],
-            "swap" : 3 * gate_costs["cx"] + 4,
-        }
+        self.operation_costs = parameters["gate_costs"]
 
 
-
-    def run(self, quantum_circuit, parameters):
+    def run(self, quantum_circuit):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
-        initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, parameters)
+        initial_mapping = cuthill_order(dag_circuit,
+                                        self.coupling_obj,
+                                        self.parameters)
 
         # initial_mapping = list(range(dag_circuit.num_qubits()))
-        if parameters["random_initial"]:
+        if self.parameters["random_initial"]:
             # Only the first positions which correspond to the circuit qubits
             initial_mapping = numpy.random.permutation(
-                parameters["nisq_qubits"])
+                self.parameters["nisq_qubits"])
             initial_mapping = initial_mapping[:dag_circuit.num_qubits()]
 
 
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
-                                              parameters,
+                                              self.parameters,
                                               initial_mapping)
         '''
             Start with an initial configuration
         '''
-        compiled_dag, back_stack = self.find_solution(dag_circuit, parameters["dry_run"])
+        compiled_dag, back_stack = self.find_solution(dag_circuit, self.parameters["dry_run"])
 
         """
             Returning here stops backtracking -> A full backtrack is not available,
@@ -221,7 +215,7 @@ class K7MCompiler(TransformationPass):
                     gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
                                                               self.positions_obj.quantum_reg,
                                                               inverse_cnot = False)
-                    additional_cost = self.global_operation_costs["ok"]
+                    additional_cost = self.operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
                 elif self.coupling_obj.is_pair(qub2, qub1):
@@ -229,7 +223,7 @@ class K7MCompiler(TransformationPass):
                     gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
                                                               self.positions_obj.quantum_reg,
                                                               inverse_cnot = True)
-                    additional_cost = self.global_operation_costs["rev_cnot"]
+                    additional_cost = self.operation_costs["rev_cnot"]
                     # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
                 else:
@@ -334,7 +328,7 @@ class K7MCompiler(TransformationPass):
                             gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
                                                                       self.positions_obj.quantum_reg,
                                                inverse_cnot = False)
-                        additional_cost += self.global_operation_costs["ok"]
+                        additional_cost += self.operation_costs["ok"]
                         # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
                     elif self.coupling_obj.is_pair(qub2, qub1):
@@ -342,7 +336,7 @@ class K7MCompiler(TransformationPass):
                             gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
                                                                       self.positions_obj.quantum_reg,
                                                                       inverse_cnot = True)
-                        additional_cost += self.global_operation_costs["rev_cnot"]
+                        additional_cost += self.operation_costs["rev_cnot"]
                         # print("CNOT!!!", qub2, qub1, "from", get_cnot_qubits(original_op))
 
                 if not dry_run:
@@ -414,7 +408,7 @@ class K7MCompiler(TransformationPass):
                 qub1 = qtmp
 
         # print("-------")
-        route_cost = (len(route) - 1) * self.global_operation_costs["swap"]
+        route_cost = (len(route) - 1) * self.operation_costs["swap"]
 
         return route_gate_list, route_cost
 

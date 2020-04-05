@@ -12,10 +12,17 @@ import math
 from qiskit.transpiler import CouplingMap
 
 class K7MCoupling:
-    def __init__(self, coupling_map, gate_costs):
+    def __init__(self, coupling_map, parameters):
 
         self.coupling_map = coupling_map
         self.coupling = CouplingMap(coupling_map)
+
+        """
+            Reverse edges are added, assuming that 
+            these do not exist in the coupling
+            Theoretically, reverse edges could have a different cost.
+        """
+        self.add_reverse_edges_and_weights(parameters["gate_costs"])
 
         '''
             Prepare the Floyd Warshall graph and weight matrix
@@ -30,12 +37,6 @@ class K7MCoupling:
         self.coupling_edges_list = [
             e for e in self.coupling.graph.edges()
         ]
-
-        """
-            Reverse edges are added, assuming that these do not exist in the coupling
-        """
-        self.add_reverse_edges_and_weights(gate_costs)
-
 
     def heuristic_choose_coupling_edge(self, qub1_to_index, qub2_to_index, next_nodes=[]):
         """
@@ -138,7 +139,7 @@ class K7MCoupling:
             # CNOT + four Hadamards for the reverse
             # coupling.graph.add_edge(edg[1], edg[0],
             # weight=gatecosts["cx"] + 4*gatecosts["u2"])
-            self.coupling.graph.add_edge(edg[1], edg[0], weight = gatecosts["cx"])
+            self.coupling.graph.add_edge(edg[1], edg[0], weight = gatecosts["rev_cx_edge"])
 
 
     def reconstruct_route(self, start_phys, stop_phys):

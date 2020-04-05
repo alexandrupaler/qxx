@@ -6,12 +6,6 @@ from k7m_core import K7MCompiler
 
 basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
 
-gate_costs = {'id': 0, 'u1': 0, 'measure': 0,
-              'reset': 0, 'barrier': 0,
-              'u2': 1, 'u3': 1, 'U': 1,
-              'cx': 10, 'CX': 10,
-              'seed': 19}  # pass the seed through gate costs
-
 def main():
 
     # Load the circuit
@@ -19,8 +13,9 @@ def main():
     # print(circ.draw(output="text", fold=-1))
 
     # Load the coupling map
-    # TODO: Test small circuits on large graphs. Was working before refactor.
     name = "./layouts/circle_reg_q5.json"
+    # name = "./layouts/ibmqx3_q16.json"
+    # name = "./layouts/rect_def_q20.json"
     with open(name, 'r') as infile:
         temp = json.load(infile)
 
@@ -33,6 +28,20 @@ def main():
     """
         K7M
     """
+    gate_costs = {'id': 0, 'u1': 0, 'measure': 0,
+                  'reset': 0, 'barrier': 0,
+                  'u2': 1, 'u3': 1, 'U': 1,
+
+                  'cx': 10, 'CX': 10,
+                  "rev_cx_edge" : 10, # related to the edge in the coupling
+
+                  "ok": 0,
+                  # update the costs
+                  "rev_cnot": 4 * 1 + 10, # 4 u2/hadamard + 1 cnot
+                  "swap": 3 * 10 + 4, # 4 u2/hadamard + 3 cnot
+
+                  'seed': 19}  # pass the seed through gate costs
+
     parameters = {
         # the number of qubits in the device
         "nisq_qubits" : temp["qubits"],
@@ -53,11 +62,12 @@ def main():
 
         "random_initial" : False,
 
-        "dry_run" : False
+        "dry_run" : False,
+        "gate_costs" : gate_costs,
     }
 
-    k7m = K7MCompiler(coupling, gate_costs)
-    result = k7m.run(circ, parameters)
+    k7m = K7MCompiler(coupling, parameters)
+    result = k7m.run(circ)
 
     print(result.draw(output="text", fold=-1, idle_wires=False))
 
