@@ -25,7 +25,7 @@ def k7m_online_cx_cancellation(dag_circuit, gate):
         return True
 
     # this a cnot: it has two qargs and no cargs
-    # get the predecessors of the output nodes that would touch the two cnot qubits
+    # predecessors of the output nodes that would touch the two cnot qubits
     out_qub_1 = dag_circuit.output_map[gate.qargs[0]]
     out_qub_2 = dag_circuit.output_map[gate.qargs[1]]
 
@@ -42,7 +42,7 @@ def k7m_online_cx_cancellation(dag_circuit, gate):
                 and (len(pred_op_on_qub1) == 1) \
                 and (pred_op_on_qub1[0] == pred_op_on_qub2[0])
 
-    same_gate_ = True
+    # same_gate_ = True
 
     if same_gate_:
         qargs0 = pred_op_on_qub1[0].qargs

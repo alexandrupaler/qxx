@@ -30,11 +30,9 @@ class K7MCompiler(TransformationPass):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
-        initial_mapping = cuthill_order(dag_circuit,
-                                        self.coupling_obj,
-                                        self.parameters)
+        # initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
 
-        # initial_mapping = list(range(dag_circuit.num_qubits()))
+        initial_mapping = list(reversed(range(dag_circuit.num_qubits())))
         if self.parameters["random_initial"]:
             # Only the first positions which correspond to the circuit qubits
             initial_mapping = numpy.random.permutation(
@@ -191,15 +189,19 @@ class K7MCompiler(TransformationPass):
                     A place to include a heuristic
                 '''
                 if not dry_run:
-                    if translated_op.name in ["u1", "u2", "u3"]:
-                        # TODO: Not necessary. Was used here for speed purposes.
-                        gs.append_ops_to_dag(compiled_dag, [translated_op])
-                        # compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
-                    else:
-                        compiled_dag.apply_operation_back(translated_op.op,
-                                                          qargs=translated_op.qargs,
-                                                          cargs=translated_op.cargs)
+
+                    gs.append_ops_to_dag(compiled_dag, [translated_op])
+
+                    # if translated_op.name in ["u1", "u2", "u3"]:
+                    #     # TODO: Not necessary. Was used here for speed purposes.
+                    #     gs.append_ops_to_dag(compiled_dag, [translated_op])
+                    #     # compiled_dag.apply_operation_back(translated_op.op, qargs=translated_op.qargs)
+                    # else:
+                    #     compiled_dag.apply_operation_back(translated_op.op,
+                    #                                       qargs=translated_op.qargs,
+                    #                                       cargs=translated_op.cargs)
             else:
+                # continue
                 '''
                     Found a CNOT:
                     Check that the qubits are on an edge
