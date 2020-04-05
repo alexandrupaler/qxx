@@ -10,12 +10,12 @@ def main():
 
     # Load the circuit
     circ = QuantumCircuit.from_qasm_file("./circuits/random0_n5_d5.qasm")
-    # print(circ.draw(output="text", fold=-1))
+    print(circ.draw(output="text", fold=-1))
 
     # Load the coupling map
-    name = "./layouts/circle_reg_q5.json"
+    # name = "./layouts/circle_reg_q5.json"
     # name = "./layouts/ibmqx3_q16.json"
-    # name = "./layouts/rect_def_q20.json"
+    name = "./layouts/rect_def_q20.json"
     with open(name, 'r') as infile:
         temp = json.load(infile)
 
@@ -48,17 +48,24 @@ def main():
 
         # maximum number of children of a node
         "max_children": circ.n_qubits,
+
         # maximum depth of the search tree
-        # after this depth, the leafs are evaluated and only the path with minimum cost is kept in the tree
+        # after this depth, the leafs are evaluated
+        # and only the path with minimum cost is kept in the tree
         # thus, the tree is pruned
         "max_depth": circ.n_qubits,
+
         # the first number_of_qubits * this factor the search maximises the cost
         # afterwards it minimises it
+        "option_max_then_min": False,
         "qubit_increase_factor": 3,  # nrq + 1#1.4
 
-        "skipped_cnot_penalty": 200,
+        "option_skipped_cnots": False,
+        "penalty_skipped_cnot": 200,
 
-        "attenuate" : True,
+        # later changes in the mapping should not affect
+        # the initial mapping of the circuit
+        "option_attenuate" : True,
 
         "random_initial" : False,
 

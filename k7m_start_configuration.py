@@ -29,20 +29,23 @@ def get_distance_linear(c1, c2):
     return abs(c1 - c2)
 
 
-def get_distance_offsets(c1, c2, offsets, coupling_object):
+def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys, coupling_object):
 
-    # dist = abs(offsets[c1] + c1 - c2 - offsets[c2])
+    minq = min(circ_q1, circ_q2)
+    maxq = max(circ_q1, circ_q2)
 
-    # idx1 = coupling_object["coupling"].qubits[("q", c1)]
-    # idx2 = coupling_object["coupling"].qubits[("q", c2)]
+    if not minq in offsets.keys():
+        offsets[minq] = 0
+    if not maxq in offsets.keys():
+        offsets[maxq] = 0
 
-    idx1 = coupling_object.coupling.physical_qubits[c1]
-    idx2 = coupling_object.coupling.physical_qubits[c2]
+    # phys_idx1 = local_circuit_to_phys[coupling_object.coupling.physical_qubits[circ_q1]]
+    # phys_idx2 = local_circuit_to_phys[coupling_object.coupling.physical_qubits[circ_q2]]
 
-    minq = min(c1, c2)
-    maxq = max(c1, c2)
+    phys_idx1 = local_circuit_to_phys[circ_q1]
+    phys_idx2 = local_circuit_to_phys[circ_q2]
 
-    dist = abs(coupling_object.coupling_dist[idx1][idx2] - offsets[minq] - offsets[maxq])
+    dist = abs(coupling_object.coupling_dist[phys_idx1][phys_idx2] - offsets[minq] - offsets[maxq])
 
     if dist > 1:
         offsets[minq] += dist // 2 - 1
@@ -53,7 +56,7 @@ def get_distance_offsets(c1, c2, offsets, coupling_object):
 
 def eval_cx_collection(cx_collection,
                        local_circuit_to_phys,
-                       phys_qub_idx_limit,
+                       circ_qub_idx_limit,
                        coupling_object,
                        attenuate):
     """
@@ -62,7 +65,7 @@ def eval_cx_collection(cx_collection,
     :param cx_collection: list of tuples representing CNOT qubits;
     control/target does not matter
     :param local_circuit_to_phys: permutation of circuit wires
-    :param phys_qub_idx_limit: physical qubit index threshold to skip;
+    :param circ_qub_idx_limit: physical qubit index threshold to skip;
         gates that operate on qubits
         with index higher than limit are not considered
     :param attenuate: Boolean - if later changes in the layout
@@ -71,36 +74,33 @@ def eval_cx_collection(cx_collection,
     """
     sum_eval = 0
 
-    t = 0
-    skipped = 0
-    active = 0
-    thisturnactive = 0
+    nr_ops_skipped = 0
+    nr_ops_active = 0
 
-    for qubit_tuple in cx_collection:
-        c1 = local_circuit_to_phys[qubit_tuple[0]]
-        c2 = local_circuit_to_phys[qubit_tuple[1]]
+    circ_qub_accumulated_offsets = {}
 
-        if c1 > phys_qub_idx_limit or c2 > phys_qub_idx_limit:
+    """
+    Effectively saying that this number of CNOTs was activated by increasing
+    the qubit index to phys_qub_idx_limit
+    """
+    nr_ops_at_idx_limit = 0
+
+    for q_tuple in cx_collection:
+
+        if q_tuple[0] > circ_qub_idx_limit or q_tuple[1] > circ_qub_idx_limit:
             # increment the number of skipped gates from the collection
-            skipped += 1
+            nr_ops_skipped += 1
         else:
-            active += 1
+            nr_ops_active += 1
 
-            if c1 == phys_qub_idx_limit or c2 == phys_qub_idx_limit:
-                thisturnactive += 1
+        if q_tuple[0] == circ_qub_idx_limit or q_tuple[1] == circ_qub_idx_limit:
+            nr_ops_at_idx_limit += 1
 
-    offsets = []
-    for qi in range(phys_qub_idx_limit + 1):
-        offsets.append(0)
 
-    for qubit_tuple in cx_collection:
-        c1 = local_circuit_to_phys[qubit_tuple[0]]
-        c2 = local_circuit_to_phys[qubit_tuple[1]]
 
-        # increment the index counter of the cnot gate
-        t += 1
+    for cnot_index, q_tuple in enumerate(cx_collection):
 
-        if c1 > phys_qub_idx_limit or c2 > phys_qub_idx_limit:
+        if q_tuple[0] > circ_qub_idx_limit or q_tuple[1] > circ_qub_idx_limit:
             continue
 
         # this is a linear distance between the qubits
@@ -110,21 +110,25 @@ def eval_cx_collection(cx_collection,
         """
         # part1 = get_distance_linear(c1, c2)
         # part1 = get_distance_coupling(c1, c2, coupling_object)
-        part1 = get_distance_offsets(c1, c2, offsets, coupling_object)
+        part1 = get_distance_offsets(q_tuple[0],
+                                     q_tuple[1],
+                                     circ_qub_accumulated_offsets,
+                                     local_circuit_to_phys,
+                                     coupling_object)
 
         if attenuate:
             # later changes in the layout should not affect
             # the beginning of the circuit
 
-            # factor = len(cx_collection) / t
+            # factor = len(cx_collection) / cnot_index
             # part1 *= factor
 
             mult = 7
-            factor = (len(cx_collection) - t)/len(cx_collection)
+            factor = (len(cx_collection) - cnot_index)/len(cx_collection)
             # part1 *= (1 - factor)
             part1 *= math.log(1 + mult * factor, 2)
 
-            # factor = t * t
+            # factor = cnot_index * cnot_index
             # part1 /= factor
 
             # part1 *= factor
@@ -139,20 +143,22 @@ def eval_cx_collection(cx_collection,
 
     # print(limit, sum_eval)
 
-    if thisturnactive > 0:
-        sum_eval /= thisturnactive
+    """
+    If the index increase did not add any additional CNOTs...math.inf cost?
+    """
+    if nr_ops_at_idx_limit > 0:
+        sum_eval /= nr_ops_at_idx_limit
     else:
         sum_eval = math.inf
 
-    return sum_eval, skipped
+    return sum_eval, nr_ops_skipped
 
 '''
     Main
 '''
 def cuthill_order(dag_circuit, coupling_object, parameters):
     """
-        Need to check what the implementation below does, but it should be
-        a kind of BFS similar to Cuthill ordering
+        Implementation below should be a kind of BFS similar to Cuthill
 
         https://en.wikipedia.org/wiki/Cuthill%E2%80%93McKee_algorithm
 
@@ -175,7 +181,8 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     :return:
     """
 
-    nrq = dag_circuit.num_qubits()
+    nr_nisq_qubits = dag_circuit.num_qubits()
+    nr_circ_qubits = dag_circuit.num_qubits()
 
     # the start configuration is 0...nrq
     # order = list(range(nrq))
@@ -220,14 +227,12 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     maximum_nr_node += 1
 
     # order = [math.inf for x in order]
-    curr_mapping = [math.inf] * nrq
+    curr_mapping = [math.inf] * nr_circ_qubits
 
     # take each index at a time.
     # start from 1
-    for node_index in range(1, nrq):
-
-        # the current limit is node_index
-        limit = node_index
+    # the current limit is node_index
+    for circ_qub_idx in range(1, nr_circ_qubits):
 
         # determine the leafs of the options_tree and store them in a list
         all_leafs = [x for x in options_tree.nodes() if options_tree.out_degree(x) == 0]
@@ -235,7 +240,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
         '''
             Cut-Off search heuristic for placement
         '''
-        if limit % parameters["max_depth"] == 0:
+        if circ_qub_idx % parameters["max_depth"] == 0:
 
             minnode, mincost = cuthill_evaluate_leafs(all_leafs, options_tree)
 
@@ -258,76 +263,77 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
         for prev_leaf in all_leafs:
             # setup ordering based on parents of this node
-            cuthill_set_partial_perm(limit, options_tree, curr_mapping, prev_leaf)
+            cuthill_set_partial_perm(circ_qub_idx, options_tree, curr_mapping, prev_leaf)
 
             #where to store candidates
             local_minimas = []
 
-            # the variable is used to store the evaluated cost
-            hold_sum = math.inf
-
-            # 31.08.2018
             # # is the processing past the limit?
             # # which is a ratio (e.g. 1/3) of the total number of qubits
             # # the idea being that initially, up to this index limit, the costs have to increase
             # # afterwards the costs have to decrease
-            # if limit < nrq / parameters["qubit_increase_factor"]:
-            #     hold_sum = - math.inf
+            #
+            reverse_cond = 1
+            if parameters["option_max_then_min"]:
+                if circ_qub_idx < nr_nisq_qubits / parameters["qubit_increase_factor"]:
+                    # this condition is checked
+                    # if the cost should be maximised -> towards start of permutation
+                    reverse_cond = -1
 
-            leaf_ancestors = [options_tree.nodes[x]["name"] for x in nx.ancestors(options_tree, prev_leaf)]
+            # the variable is used to store the evaluated cost
+            hold_sum = reverse_cond * math.inf
+
+            # This is the list of all NISQ qubits used for mapping by now
+            leaf_ancestors = [options_tree.nodes[x]["name"]
+                              for x in nx.ancestors(options_tree, prev_leaf)]
             leaf_ancestors.append(options_tree.nodes[prev_leaf]["name"])
 
             # Use all the qubits which are not predecessors of the current leaf
-            for circ_qubit in range(nrq):
+            for phys_qubit in range(nr_nisq_qubits):
 
-                if circ_qubit in leaf_ancestors:
+                if phys_qubit in leaf_ancestors:
+                    # This nisq qubit has already been used
                     continue
 
                 #place previously unused qubit on index limit
-                curr_mapping[circ_qubit] = limit
+                curr_mapping[circ_qub_idx] = phys_qubit
 
                 # the cost of the leaf is stored in prev_sum
-                prev_sum = options_tree.nodes[prev_leaf]["cost"]
+                prev_cost = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
-                sume, skipped = eval_cx_collection(cx_collection,
-                                                   curr_mapping,
-                                                   limit,
-                                                   coupling_object,
-                                                   parameters["attenuate"])
+                temp_cost, skipped = eval_cx_collection(cx_collection,
+                                                        curr_mapping,
+                                                        circ_qub_idx,
+                                                        coupling_object,
+                                                        parameters["option_attenuate"])
 
-                # print("check", qubit, "tmp sum", sume, "order", order)
+                skipped_penalty = 0
+                # print("check", qubit, "tmp sum", temp_cost, "order", order)
+                if parameters["option_skipped_cnots"]:
+                    skipped_penalty = skipped * parameters["skipped_cnot_penalty"]
 
+
+                temp_cost += reverse_cond * skipped_penalty
                 # the question is: is the computed cost less than the hold_sum?
-                # this condition is checked if the cost should be minimised -> towards end of permutation
-
-                # 31.08.2018
-                # if limit < nrq / parameter_qubit_increase_factor:
-                #     # this condition is checked if the cost should be maximised -> towards start of permutation
-                #     sume -= (skipped * parameters["skipped_cnot_penalty"])
-                #     condition = sume > hold_sum
-                # else:
-                #     sume += (skipped * parameters["skipped_cnot_penalty"])
-                #     condition = sume < hold_sum
-
-                # sume += (skipped * parameters["skipped_cnot_penalty"])
-                condition = (sume < hold_sum)
+                condition = (reverse_cond * temp_cost) < (reverse_cond * hold_sum)
 
                 # if the condition is true
                 # store the candidate node in the local_minimas
-                if sume != prev_sum:
+                if temp_cost != prev_cost:
                     if condition:
-                        hold_sum = sume
+                        hold_sum = temp_cost
                         local_minimas.clear()
-                        local_minimas.append(circ_qubit)
-                    elif sume == hold_sum and len(local_minimas) < parameters["max_children"]:
-                        local_minimas.append(circ_qubit)
+                        local_minimas.append(phys_qubit)
+                    elif temp_cost == hold_sum and len(local_minimas) < parameters["max_children"]:
+                        local_minimas.append(phys_qubit)
 
                 # reset placement
-                curr_mapping[circ_qubit] = math.inf
+                curr_mapping[circ_qub_idx] = math.inf
 
             #reset entire ordering
             cuthill_set_partial_perm(math.inf, options_tree, curr_mapping, prev_leaf)
+
 
             # add leafs to the node that generated these permutations
             for lmin in local_minimas:
@@ -348,7 +354,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
     # the final order permutation is computed.
     # this will be returned and used by the placement
-    cuthill_set_partial_perm(nrq, options_tree, curr_mapping, minnode)
+    cuthill_set_partial_perm(nr_circ_qubits, options_tree, curr_mapping, minnode)
 
     # print("sum eval:", mincost, eval_cx_collection(cx_collection, order, nrq))
     # print(order)
@@ -377,34 +383,46 @@ def cuthill_evaluate_leafs(all_leafs, options_tree):
     return minnode, mincost
 
 
-def cuthill_set_partial_perm(limit, options_tree, curr_mapping, prev_leaf):
+def cuthill_set_partial_perm(circ_qubit_idx_limit, options_tree, curr_mapping, prev_leaf):
     """
+    Construct the mapping backwards: from the highest circuit qubit
+    index to the lowest
 
-    :param limit:
+    :param circ_qubit_idx_limit:
     :param options_tree:
     :param curr_mapping:
     :param prev_leaf:
     :return:
     """
-    position = math.inf
-    if limit != math.inf:
-        position = limit - 1
 
-    # this node is placed at the index position
-    curr_mapping[options_tree.nodes[prev_leaf]["name"]] = position
+    if circ_qubit_idx_limit == math.inf:
+        # This is a complicated way to reset
+        # curr_mapping = [math.inf] * len(curr_mapping)
+        for x in range(len(curr_mapping)):
+            curr_mapping[x] = math.inf
+        return
+
+    # TODO: Adapt for multiple qubits on nisq
+    circ_qubit = circ_qubit_idx_limit - 1
 
     # save the prev_leaf index
     p_prev_leaf = prev_leaf
+
+    # place current node at the lower position
+    phys_qubit = options_tree.nodes[p_prev_leaf]["name"]
+    curr_mapping[circ_qubit] = phys_qubit
+
     # the parents of prev_leaf and so on towards the root are placed
     # at indices decremented from position
     while len(options_tree.pred[p_prev_leaf]) == 1:
         # get the parent of the current node,
         # store it into a list and take the first element
         p_prev_leaf = list(options_tree.pred[p_prev_leaf])[0]
-        if limit != math.inf:
-            # decrement position
-            position -= 1
+
+        circ_qubit -= 1
+
         # place current node at the lower position
-        curr_mapping[options_tree.nodes[p_prev_leaf]["name"]] = position
+        phys_qubit = options_tree.nodes[p_prev_leaf]["name"]
+        curr_mapping[circ_qubit] = phys_qubit
 
 

@@ -4,10 +4,7 @@ import copy
 import qiskit
 
 class K7MPositions:
-    def __init__(self, dag_circuit,
-                 parameters,
-                 initial_mapping
-                 ):
+    def __init__(self, dag_circuit, parameters,initial_mapping):
         """
 
         :param dag_circuit:
