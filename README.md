@@ -14,7 +14,7 @@ fully mapped circuit;
 computational power to improve the cost of the placement heuristic.
 
 
-The K7M algorithm were briefly explained and used for some results in
+The K7M algorithm was briefly explained and used for some results in
  https://arxiv.org/abs/1811.08985
 
 

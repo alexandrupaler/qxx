@@ -1,10 +1,6 @@
 import json
-
 from qiskit import QuantumCircuit
-
-from k7m_core import K7MCompiler
-
-basis_gates = 'u1,u2,u3,cx,id'  # or use "U,CX?"
+from k7m_core import K7MCompiler, K7MInitialMapping
 
 def main():
 
@@ -67,7 +63,8 @@ def main():
         # the initial mapping of the circuit
         "option_attenuate" : True,
 
-        "random_initial" : False,
+        # Should the initial mapping be chosen random?
+        "initial_map" : K7MInitialMapping.HEURISTIC,
 
         "dry_run" : False,
         "gate_costs" : gate_costs,

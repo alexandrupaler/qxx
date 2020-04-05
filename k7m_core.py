@@ -1,16 +1,21 @@
 import copy
 import numpy
 import qiskit
+import enum
 
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
 from k7m_coupling import K7MCoupling
 from k7m_positions import K7MPositions
-
+from k7m_start_configuration import cuthill_order
 import k7m_gate_utils as gs
 
-from k7m_start_configuration import cuthill_order
+
+class K7MInitialMapping(enum.Enum):
+    RANDOM = enum.auto()
+    LINEAR = enum.auto()
+    HEURISTIC = enum.auto()
 
 
 class K7MCompiler(TransformationPass):
@@ -30,14 +35,16 @@ class K7MCompiler(TransformationPass):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
-        # initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
-
-        initial_mapping = list(reversed(range(dag_circuit.num_qubits())))
-        if self.parameters["random_initial"]:
+        initial_mapping = []
+        if self.parameters["initial_map"] == K7MInitialMapping.RANDOM:
             # Only the first positions which correspond to the circuit qubits
             initial_mapping = numpy.random.permutation(
                 self.parameters["nisq_qubits"])
             initial_mapping = initial_mapping[:dag_circuit.num_qubits()]
+        elif self.parameters["initial_map"] == K7MInitialMapping.LINEAR:
+            initial_mapping = list(range(dag_circuit.num_qubits()))
+        elif self.parameters["initial_map"] == K7MInitialMapping.HEURISTIC:
+            initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
 
 
         if self.positions_obj == None:
