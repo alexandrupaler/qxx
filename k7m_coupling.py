@@ -111,6 +111,7 @@ class K7MCoupling:
         #                 qubit2 in self.coupling_map[qubit1])
 
         bool_found = [qubit1, qubit2] in self.coupling_map
+        bool_found = bool_found or (qubit1, qubit2) in self.coupling_map
         return bool_found
 
 
