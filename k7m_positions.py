@@ -29,7 +29,7 @@ class K7MPositions:
             # configuration[i] = nrq - 1 - i # qubit i@i
             self.pos_circuit_to_phys[circ_qubit] = initial_mapping[circ_qubit]  # qubit i@i
 
-        print("current circ2phys: ", self.pos_circuit_to_phys)
+        # print("current circ2phys: ", self.pos_circuit_to_phys)
 
         """
             The reverse dictionary of current_positions
@@ -37,7 +37,7 @@ class K7MPositions:
         self.pos_phys_to_circuit = {k: -1 for k in range(parameters["nisq_qubits"])}
         for k, v in self.pos_circuit_to_phys.items():
             self.pos_phys_to_circuit[v] = k
-        print("current phys2circ: ", self.pos_phys_to_circuit)
+        # print("current phys2circ: ", self.pos_phys_to_circuit)
 
 
     def update_configuration(self, route_phys):

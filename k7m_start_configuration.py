@@ -225,6 +225,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
     # order = [math.inf for x in order]
     curr_mapping = [math.inf] * nr_circ_qubits
+    curr_mapping[0] = 0
 
     # take each index at a time.
     # start from 1
@@ -237,7 +238,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
         '''
             Cut-Off search heuristic for placement
         '''
-        if circ_qub_idx % parameters["max_depth"] == 0:
+        if (circ_qub_idx % parameters["max_depth"] == 0) and (circ_qub_idx > 0):
 
             minnode, mincost = cuthill_evaluate_leafs(all_leafs, options_tree)
 
@@ -257,12 +258,13 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
             all_leafs = [minnode]
 
         # print("limit", limit)
-
+        # print("--------")
         for prev_leaf in all_leafs:
             # setup ordering based on parents of this node
             cuthill_set_partial_perm(circ_qub_idx, options_tree, curr_mapping, prev_leaf)
+            # print(circ_qub_idx, curr_mapping)
 
-            #where to store candidates
+            # Where to store candidates
             local_minimas = []
 
             # # is the processing past the limit?
@@ -285,18 +287,23 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
                               for x in nx.ancestors(options_tree, prev_leaf)]
             leaf_ancestors.append(options_tree.nodes[prev_leaf]["name"])
 
+            # print("ancestors", leaf_ancestors)
+
             # Use all the qubits which are not predecessors of the current leaf
             for phys_qubit in range(nr_nisq_qubits):
 
                 if phys_qubit in leaf_ancestors:
                     # This nisq qubit has already been used
+                    # print("skip ", phys_qubit)
                     continue
+                # else:
+                    # print("consider ", phys_qubit)
 
                 #place previously unused qubit on index limit
                 curr_mapping[circ_qub_idx] = phys_qubit
 
-                # the cost of the leaf is stored in prev_sum
-                prev_cost = options_tree.nodes[prev_leaf]["cost"]
+                # # the cost of the leaf is stored in prev_sum
+                # prev_cost = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
                 temp_cost, skipped = eval_cx_collection(cx_collection,
@@ -317,22 +324,24 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
                 # if the condition is true
                 # store the candidate node in the local_minimas
-                if temp_cost != prev_cost:
-                    if condition:
-                        hold_sum = temp_cost
-                        local_minimas.clear()
-                        local_minimas.append(phys_qubit)
-                    elif temp_cost == hold_sum and len(local_minimas) < parameters["max_children"]:
-                        local_minimas.append(phys_qubit)
+                # if temp_cost != prev_cost:
+                if condition:
+                    hold_sum = temp_cost
+                    local_minimas.clear()
+                    local_minimas.append(phys_qubit)
+                elif temp_cost == hold_sum \
+                        and len(local_minimas) < parameters["max_children"]:
+                    local_minimas.append(phys_qubit)
 
                 # reset placement
-                curr_mapping[circ_qub_idx] = math.inf
+                # curr_mapping[circ_qub_idx] = math.inf
 
-            #reset entire ordering
-            cuthill_set_partial_perm(math.inf, options_tree, curr_mapping, prev_leaf)
+            # reset entire ordering
+            # cuthill_set_partial_perm(math.inf, options_tree, curr_mapping, prev_leaf)
 
 
             # add leafs to the node that generated these permutations
+            # print("add leafs ", local_minimas, " to the parent ", prev_leaf)
             for lmin in local_minimas:
                 new_node_name = maximum_nr_node
                 maximum_nr_node += 1
@@ -392,34 +401,15 @@ def cuthill_set_partial_perm(circ_qubit_idx_limit, options_tree, curr_mapping, p
     :return:
     """
 
-    if circ_qubit_idx_limit == math.inf:
-        # This is a complicated way to reset
-        # curr_mapping = [math.inf] * len(curr_mapping)
-        for x in range(len(curr_mapping)):
-            curr_mapping[x] = math.inf
-        return
-
     # TODO: Adapt for multiple qubits on nisq
-    circ_qubit = circ_qubit_idx_limit - 1
-
-    # save the prev_leaf index
+    circ_qubit = circ_qubit_idx_limit  - 1
     p_prev_leaf = prev_leaf
 
-    # place current node at the lower position
-    phys_qubit = options_tree.nodes[p_prev_leaf]["name"]
-    curr_mapping[circ_qubit] = phys_qubit
-
-    # the parents of prev_leaf and so on towards the root are placed
-    # at indices decremented from position
-    while len(options_tree.pred[p_prev_leaf]) == 1:
-        # get the parent of the current node,
-        # store it into a list and take the first element
-        p_prev_leaf = list(options_tree.pred[p_prev_leaf])[0]
-
-        circ_qubit -= 1
-
-        # place current node at the lower position
+    while circ_qubit >= 0:
+        # save the prev_leaf index
         phys_qubit = options_tree.nodes[p_prev_leaf]["name"]
         curr_mapping[circ_qubit] = phys_qubit
 
-
+        circ_qubit -= 1
+        if circ_qubit >= 0:
+            p_prev_leaf = list(options_tree.pred[p_prev_leaf])[0]

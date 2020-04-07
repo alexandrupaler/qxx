@@ -47,6 +47,11 @@ class K7MCompiler(TransformationPass):
             initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
 
 
+        # print(initial_mapping)
+        #
+        # return quantum_circuit
+
+
         if self.positions_obj == None:
             self.positions_obj = K7MPositions(dag_circuit,
                                               self.parameters,
