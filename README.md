@@ -39,8 +39,9 @@ A simple usage example can be seen in [main.py](main.py).
 
 The results for benchmarking K7M with [arxiv:2002.09783](https://arxiv.org/pdf/2002.09783.pdf) 
 are below.
-<img alt="benchmark" src="TFL.png" width="300"/>
 
+
+<img alt="benchmark" src="TFL.png" width="400"/>
 
 
 ### Original description of K7M
