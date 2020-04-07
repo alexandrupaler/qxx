@@ -40,36 +40,38 @@ def main():
 
     parameters = {
         # the number of qubits in the device
-        "nisq_qubits" : temp["qubits"],
-
-        # maximum number of children of a node
-        "max_children": circ.n_qubits,
+        "nisq_qubits": temp["qubits"],
 
         # maximum depth of the search tree
         # after this depth, the leafs are evaluated
         # and only the path with minimum cost is kept in the tree
         # thus, the tree is pruned
         "max_depth": circ.n_qubits,
+        # "max_depth": test_circuit.n_qubits/4,
+
+        # maximum number of children of a node
+        # "max_children": qiskit_coupling_map.size(),
+        "max_children": 3,
 
         # the first number_of_qubits * this factor the search maximises the cost
         # afterwards it minimises it
         "option_max_then_min": False,
         "qubit_increase_factor": 3,
 
-        "option_skipped_cnots": False,
+        "option_skipped_cnots": True,
         "penalty_skipped_cnot": 200,
 
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
-        "option_attenuate" : True,
+        "option_attenuate": True,
 
         # Should the initial mapping be chosen random?
-        "initial_map" : K7MInitialMapping.HEURISTIC,
+        "initial_map": K7MInitialMapping.HEURISTIC,
 
         "unidirectional_coupling": False,
 
-        "dry_run" : False,
-        "gate_costs" : gate_costs,
+        "dry_run": False,
+        "gate_costs": gate_costs,
     }
 
     k7m = K7MCompiler(coupling, parameters)

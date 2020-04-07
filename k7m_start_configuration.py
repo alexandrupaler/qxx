@@ -315,7 +315,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
                 skipped_penalty = 0
                 # print("check", qubit, "tmp sum", temp_cost, "order", order)
                 if parameters["option_skipped_cnots"]:
-                    skipped_penalty = skipped * parameters["skipped_cnot_penalty"]
+                    skipped_penalty = skipped * parameters["penalty_skipped_cnot"]
 
 
                 temp_cost += reverse_cond * skipped_penalty
