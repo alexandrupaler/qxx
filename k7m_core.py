@@ -224,7 +224,7 @@ class K7MCompiler(TransformationPass):
                 # How much does a movement cost?
                 additional_cost = 0
 
-                if self.coupling_obj.is_pair(qub1, qub2):
+                if self.coupling_obj.is_pair(qub1, qub2, self.parameters["unidirectional_coupling"]):
                     # can be directly implemented
                     gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
                                                               self.positions_obj.quantum_reg,
@@ -232,7 +232,7 @@ class K7MCompiler(TransformationPass):
                     additional_cost = self.operation_costs["ok"]
                     # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
-                elif self.coupling_obj.is_pair(qub2, qub1):
+                elif self.coupling_obj.is_pair(qub2, qub1, self.parameters["unidirectional_coupling"]):
                     # needs a reversed cnot
                     gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
                                                               self.positions_obj.quantum_reg,
@@ -337,7 +337,7 @@ class K7MCompiler(TransformationPass):
                     retranslated_op = self.positions_obj.translate_op_to_coupling_map(original_op)
                     qub1, qub2 = get_cnot_qubits(retranslated_op)
 
-                    if self.coupling_obj.is_pair(qub1, qub2):
+                    if self.coupling_obj.is_pair(qub1, qub2, self.parameters["unidirectional_coupling"]):
                         if not dry_run:
                             gates_to_insert += gs.comp_cnot_gate_list(qub1, qub2,
                                                                       self.positions_obj.quantum_reg,
@@ -345,7 +345,7 @@ class K7MCompiler(TransformationPass):
                         additional_cost += self.operation_costs["ok"]
                         # print("CNOT!!!", qub1, qub2, "from", get_cnot_qubits(original_op))
 
-                    elif self.coupling_obj.is_pair(qub2, qub1):
+                    elif self.coupling_obj.is_pair(qub2, qub1, self.parameters["unidirectional_coupling"]):
                         if not dry_run:
                             gates_to_insert += gs.comp_cnot_gate_list(qub2, qub1,
                                                                       self.positions_obj.quantum_reg,
@@ -396,9 +396,9 @@ class K7MCompiler(TransformationPass):
                 then check for qub2,qub1 and perform swap between indices
                 if the latter does not exist either --> ERROR
                 """
-                if not self.coupling_obj.is_pair(qub1, qub2):
+                if not self.coupling_obj.is_pair(qub1, qub2, self.parameters["unidirectional_coupling"]):
                     qub1, qub2 = qub2, qub1  # swap variables
-                    if not self.coupling_obj.is_pair(qub1, qub2):
+                    if not self.coupling_obj.is_pair(qub1, qub2, self.parameters["unidirectional_coupling"]):
                         print("NOT GOOD: Coupling not OK!", qub1, qub2)
                         is_error = True
 
@@ -412,9 +412,15 @@ class K7MCompiler(TransformationPass):
                     route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
                                                               self.positions_obj.quantum_reg,
                                                               inverse_cnot=False)
-                    route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
-                                                              self.positions_obj.quantum_reg,
-                                                              inverse_cnot=True)
+
+                    if self.parameters["unidirectional_coupling"]:
+                        route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
+                                                                  self.positions_obj.quantum_reg,
+                                                                  inverse_cnot=True)
+                    else:
+                        route_gate_list += gs.comp_cnot_gate_list(qub2, qub1,
+                                                                  self.positions_obj.quantum_reg,
+                                                                  inverse_cnot=False)
                     route_gate_list += gs.comp_cnot_gate_list(qub1, qub2,
                                                               self.positions_obj.quantum_reg,
                                                               inverse_cnot=False)

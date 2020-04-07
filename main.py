@@ -66,6 +66,8 @@ def main():
         # Should the initial mapping be chosen random?
         "initial_map" : K7MInitialMapping.HEURISTIC,
 
+        "unidirectional_coupling": False,
+
         "dry_run" : False,
         "gate_costs" : gate_costs,
     }

@@ -98,7 +98,7 @@ class K7MCoupling:
         return stop_node_idx1, stop_node_idx2
 
 
-    def is_pair(self, qubit1, qubit2):
+    def is_pair(self, qubit1, qubit2, unidirectional_coupling):
 
         # pair_pass = (qubit1 in coupling_map)
         # if pair_pass:
@@ -112,6 +112,11 @@ class K7MCoupling:
 
         bool_found = [qubit1, qubit2] in self.coupling_map
         bool_found = bool_found or (qubit1, qubit2) in self.coupling_map
+
+        if not unidirectional_coupling:
+            bool_found = bool_found or [qubit2, qubit1] in self.coupling_map
+            bool_found = bool_found or (qubit2, qubit1) in self.coupling_map
+
         return bool_found
 
 
