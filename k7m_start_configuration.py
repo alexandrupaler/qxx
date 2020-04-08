@@ -55,7 +55,8 @@ def eval_cx_collection(cx_collection,
                        local_circuit_to_phys,
                        circ_qub_idx_limit,
                        coupling_object,
-                       attenuate):
+                       parameters,
+                       plus_or_minus):
     """
     This is the heuristic cost function to evaluate the cost
     for a mapping configuration
@@ -94,7 +95,6 @@ def eval_cx_collection(cx_collection,
             nr_ops_at_idx_limit += 1
 
 
-
     for cnot_index, q_tuple in enumerate(cx_collection):
 
         if q_tuple[0] > circ_qub_idx_limit or q_tuple[1] > circ_qub_idx_limit:
@@ -113,24 +113,27 @@ def eval_cx_collection(cx_collection,
                                      local_circuit_to_phys,
                                      coupling_object)
 
-        if attenuate:
+        if parameters["option_attenuate"]:
             # later changes in the layout should not affect
             # the beginning of the circuit
 
             # factor = len(cx_collection) / cnot_index
             # part1 *= factor
 
-            mult = 7
+            mult = 100
             factor = (len(cx_collection) - cnot_index)/len(cx_collection)
             # part1 *= (1 - factor)
-            part1 *= math.log(1 + mult * factor, 2)
+            # part1 *= math.log(1 + mult * factor, 2)
+            # part1 *= math.log(mult * factor, 2)
+
+            part1 *= math.exp(factor)
 
             # factor = cnot_index * cnot_index
             # part1 /= factor
 
             # part1 *= factor
 
-        sum_eval += part1
+        sum_eval += plus_or_minus * part1
 
     # if attenuate:
     #     # each additionally considered qubit should enable
@@ -141,14 +144,19 @@ def eval_cx_collection(cx_collection,
     # print(limit, sum_eval)
 
     """
-    If the index increase did not add any additional CNOTs...math.inf cost?
+        If the index increase did not add any additional CNOTs...math.inf cost?
     """
-    if nr_ops_at_idx_limit > 0:
-        sum_eval /= nr_ops_at_idx_limit
-    else:
-        sum_eval = math.inf
+    if parameters["option_divide_by_activated"]:
+        if nr_ops_at_idx_limit > 0:
+            sum_eval /= nr_ops_at_idx_limit
+        else:
+            sum_eval = math.inf
 
-    return sum_eval, nr_ops_skipped
+    # print("check", qubit, "tmp sum", temp_cost, "order", order)
+    if parameters["option_skipped_cnots"]:
+        sum_eval = plus_or_minus * nr_ops_skipped * parameters["penalty_skipped_cnot"]
+
+    return sum_eval
 
 '''
     Main
@@ -306,19 +314,13 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
                 # prev_cost = options_tree.nodes[prev_leaf]["cost"]
 
                 # evaluate the cost of the cnots touching the qubits before limit
-                temp_cost, skipped = eval_cx_collection(cx_collection,
-                                                        curr_mapping,
-                                                        circ_qub_idx,
-                                                        coupling_object,
-                                                        parameters["option_attenuate"])
+                temp_cost = eval_cx_collection(cx_collection,
+                                               curr_mapping,
+                                               circ_qub_idx,
+                                               coupling_object,
+                                               parameters,
+                                               reverse_cond)
 
-                skipped_penalty = 0
-                # print("check", qubit, "tmp sum", temp_cost, "order", order)
-                if parameters["option_skipped_cnots"]:
-                    skipped_penalty = skipped * parameters["penalty_skipped_cnot"]
-
-
-                temp_cost += reverse_cond * skipped_penalty
                 # the question is: is the computed cost less than the hold_sum?
                 condition = (reverse_cond * temp_cost) < (reverse_cond * hold_sum)
 
