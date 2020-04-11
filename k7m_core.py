@@ -50,6 +50,7 @@ class K7MCompiler(TransformationPass):
         # print(initial_mapping)
         #
         # return quantum_circuit
+        # print(".......")
 
 
         if self.positions_obj == None:
@@ -257,6 +258,12 @@ class K7MCompiler(TransformationPass):
                     #get the next cnots and check use their coordinates to find the next edge
                     next_nodes = []
                     # self.commented_method_for_lookahead(next_nodes)
+
+                    # for succ in dag_circuit.quantum_successors(original_op):
+                    #     next_nodes.append(
+                    #         self.positions_obj.pos_circuit_to_phys[succ.qar])
+                    #     next_nodes.append(
+                    #         self.positions_obj.pos_circuit_to_phys[succ.qar])
 
                     # Compute the edgee index where the qubits could be moved
                     stop_phys_q1, stop_phys_q2 = self.coupling_obj.heuristic_choose_coupling_edge(

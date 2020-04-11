@@ -38,6 +38,7 @@ class K7MCoupling:
             e for e in self.coupling.graph.edges()
         ]
 
+
     def heuristic_choose_coupling_edge(self, qub1_to_index, qub2_to_index, next_nodes=[]):
         """
             Heuristic: which coupling edge generates the smallest
@@ -60,17 +61,17 @@ class K7MCoupling:
             cost2 = self.coupling_dist[qub2_to_index][edge2]
 
             # do not consider interaction cost?
-            tmp_cost = cost1 + cost2  # + self.coupling_dist[qub1_to_index][qub2_to_index]
+            tmp_cost = cost1 + cost2  #+ self.coupling_dist[qub1_to_index][qub2_to_index]
 
             '''
                 A kind of clustering heuristic:
                 the closer the edge is to previous CNOTs, the better (?)
             '''
-            # f_idx = len(next_nodes)
-            # for node in next_nodes:
-            #     tmp_cost += 0.05 * f_idx * self.coupling_dist[node][edge1]
-            #     tmp_cost += 0.05 * f_idx * self.coupling_dist[node][edge2]
-            #     f_idx -= 1
+            f_idx = len(next_nodes)
+            for node in next_nodes:
+                tmp_cost += 0.05 * f_idx * self.coupling_dist[node][edge1]
+                tmp_cost += 0.05 * f_idx * self.coupling_dist[node][edge2]
+                f_idx -= 1
 
             '''
                 A kind of preference heuristic: 
