@@ -8,8 +8,12 @@ import sys
 gdv_name = "TFL"
 # for future qiskit experiment
 dataset = list()
-# with open("_private_data/BNTF/{}.csv".format(gdv_name), 'r') as csvfile:
-with open("_private_data/BNTF/TFL_Aspen-4.csv".format(gdv_name), 'r') as csvfile:
+benchmark_name = "TFL_Aspen-4_{'max_depth': 16, 'max_children': 3, 'option_max_then_min': False, 'qubit_increase_factor': 3, 'option_skipped_cnots': False, 'penalty_skipped_cnot': 200, 'option_divide_by_activated': False, 'option_attenuate': False}"
+
+fig, ax = plt.subplots()
+
+
+with open("_private_data/BNTF/{}.csv".format(benchmark_name), 'r') as csvfile:
     for row in csv.reader(csvfile, delimiter=','):
         data = list()
         for i in range(len(row)):
@@ -17,6 +21,7 @@ with open("_private_data/BNTF/TFL_Aspen-4.csv".format(gdv_name), 'r') as csvfile
                 data.append(literal_eval(row[i]))
             else:
                 data.append(row[i])
+
         dataset.append(data)
 csvfile.close()
 
@@ -36,10 +41,15 @@ for tool in ["k7m"]:
             if data[1] == tool and data[2] == depth:
                 count_data += 1
                 depth_ratio[tool][i] += data[3] / data[2]
-                with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'a') as csvfile:
-                    csv.writer(csvfile).writerow([data[2], data[3] / data[2]])
-                csvfile.close()
+
+                ax.plot(data[2], data[3] / data[2], 'o', color="lightgreen")
+                # with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'a') as csvfile:
+                #     csv.writer(csvfile).writerow([data[2], data[3] / data[2]])
+                # csvfile.close()
         depth_ratio[tool][i] /= count_data
+
+
+
     # for i in range(9):
     #     depth = 5 * (i + 1)
     #     with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'a') as csvfile:
@@ -55,8 +65,12 @@ for tool in ["k7m"]:
 """
 Load other files
 """
+
+# other_tools = ["cirq", "qiskit", "tket", "jku"]
+other_tools = []
+
 counts = [0] * 9
-for tool in ["cirq", "qiskit", "tket", "jku"]:
+for tool in other_tools:
     counts = [0] * 9
     with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'r') as csvfile:
         reader = csv.reader(csvfile)
@@ -71,11 +85,15 @@ for tool in ["cirq", "qiskit", "tket", "jku"]:
 Generate plots
 """
 
-fig, ax = plt.subplots()
-for tool in ["cirq", "qiskit", "tket", "jku", "k7m"]:
+for tool in other_tools + ["k7m"]:
     ax.plot(optimal_depth, depth_ratio[tool], label=tool)
+
 ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-ax.legend()
+ax.set_ylim(0, 10)
+
+if len(other_tools) > 0:
+    ax.legend()
+
 # fig.savefig('_private_data/BNTF/{}.png'.format(gdv_name), dpi=300)
-fig.savefig('{}_new.png'.format(gdv_name), dpi=150)
+fig.savefig('{}.png'.format(benchmark_name), dpi=150)
 
