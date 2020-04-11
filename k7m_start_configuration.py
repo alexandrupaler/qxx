@@ -1,3 +1,5 @@
+import random
+
 import networkx as nx
 import math
 
@@ -127,6 +129,7 @@ def eval_cx_collection(cx_collection,
             # part1 *= math.log(mult * factor, 2)
 
             part1 *= math.exp(factor)
+            # part1 *= math.exp(len(cx_collection) - cnot_index)
 
             # factor = cnot_index * cnot_index
             # part1 /= factor
@@ -143,6 +146,12 @@ def eval_cx_collection(cx_collection,
 
     # print(limit, sum_eval)
 
+    # print("check", qubit, "tmp sum", temp_cost, "order", order)
+    if parameters["option_skipped_cnots"]:
+        sk_factor = nr_ops_skipped / len(cx_collection)
+        sk_factor *= sum_eval
+        sum_eval += plus_or_minus * sk_factor * parameters["penalty_skipped_cnot"]
+
     """
         If the index increase did not add any additional CNOTs...math.inf cost?
     """
@@ -151,10 +160,6 @@ def eval_cx_collection(cx_collection,
             sum_eval /= nr_ops_at_idx_limit
         else:
             sum_eval = math.inf
-
-    # print("check", qubit, "tmp sum", temp_cost, "order", order)
-    if parameters["option_skipped_cnots"]:
-        sum_eval = plus_or_minus * nr_ops_skipped * parameters["penalty_skipped_cnot"]
 
     return sum_eval
 
@@ -186,7 +191,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
     :return:
     """
 
-    nr_nisq_qubits = dag_circuit.num_qubits()
+    nr_nisq_qubits = parameters["nisq_qubits"]
     nr_circ_qubits = dag_circuit.num_qubits()
 
     # the start configuration is 0...nrq
@@ -233,7 +238,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
 
     # order = [math.inf for x in order]
     curr_mapping = [math.inf] * nr_circ_qubits
-    curr_mapping[0] = 0
+    curr_mapping[0] = 0 #random.randint(0, nr_nisq_qubits - 1)
 
     # take each index at a time.
     # start from 1
