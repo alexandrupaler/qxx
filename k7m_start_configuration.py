@@ -122,19 +122,25 @@ def eval_cx_collection(cx_collection,
             # factor = len(cx_collection) / cnot_index
             # part1 *= factor
 
-            mult = 100
-            factor = (len(cx_collection) - cnot_index)/len(cx_collection)
+            # factor = 0.0001 + parameters["att_fact"] * (len(cx_collection) - cnot_index)/len(cx_collection)
             # part1 *= (1 - factor)
             # part1 *= math.log(1 + mult * factor, 2)
             # part1 *= math.log(mult * factor, 2)
 
-            part1 *= math.exp(factor)
+            # part1 *=  math.exp(factor)
             # part1 *= math.exp(len(cx_collection) - cnot_index)
 
             # factor = cnot_index * cnot_index
             # part1 /= factor
 
             # part1 *= factor
+
+            # Go Gaussian
+            x = cnot_index/len(cx_collection)
+            f = (x - parameters["att_fact_c"]) ** 2
+            f = f / parameters["att_fact_b"]
+            f = math.exp(-f)
+            part1 *= parameters["att_fact_a"] * f
 
         sum_eval += plus_or_minus * part1
 
@@ -148,14 +154,14 @@ def eval_cx_collection(cx_collection,
 
     # print("check", qubit, "tmp sum", temp_cost, "order", order)
     if parameters["option_skipped_cnots"]:
-        sk_factor = nr_ops_skipped / len(cx_collection)
+        sk_factor = nr_ops_skipped #/ len(cx_collection)
         sk_factor *= parameters["penalty_skipped_cnot"]
         sum_eval += plus_or_minus * sk_factor
 
     """
         If the index increase did not add any additional CNOTs...math.inf cost?
     """
-    if parameters["option_divide_by_activated"]:
+    if parameters["option_div_by_active"]:
         if nr_ops_at_idx_limit > 0:
             sum_eval /= nr_ops_at_idx_limit
         else:

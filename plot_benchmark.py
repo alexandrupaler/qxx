@@ -111,10 +111,10 @@ def plot_experiment_results(benchmark_name):
     for tool in other_tools + ["k7m"]:
         ax.plot(optimal_depth, depth_ratio[tool], label=tool)
 
-        if large_i == 4:
-            ax_large.plot(optimal_depth, depth_ratio[tool], "x", label=large_i)
-        else:
-            ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
+        # if large_i == 4:
+        #     ax_large.plot(optimal_depth, depth_ratio[tool], "x", label=large_i)
+        # else:
+        ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
     ax.set_ylim(0, 10)
@@ -123,7 +123,9 @@ def plot_experiment_results(benchmark_name):
         ax.legend()
 
     # fig.savefig('_private_data/BNTF/{}.png'.format(gdv_name), dpi=300)
-    fig.savefig('{}.png'.format(benchmark_name), dpi=150)
+    png_name = os.path.basename(benchmark_name)
+    folder_name = os.path.dirname(benchmark_name)
+    fig.savefig('{}/{}{}.png'.format(folder_name,large_i,png_name), dpi=150)
 
 
 """

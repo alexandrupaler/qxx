@@ -26,7 +26,7 @@ nr_qubits = 16
 
 first_run = True
 
-def benchmark(depth, trail):
+def benchmark(depth, trail, varying_param):
 
     # qasm_file_name = "_private_benchmark/BNTF/16QBT_{:02}CYC_{}_{}.qasm".format(
     #     depth, gdv_name, trail)
@@ -113,14 +113,15 @@ def benchmark(depth, trail):
         "option_max_then_min": False,
         "qubit_increase_factor": 3,
 
-        "option_skipped_cnots": True,
-        "penalty_skipped_cnot": 2000,
+        "option_skipped_cnots": False,
+        "penalty_skipped_cnot": 20,
 
-        "option_divide_by_activated" : False,
+        "option_div_by_active" : False,
 
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
-        "option_attenuate": False,
+        "option_attenuate": True,
+        "att_fact": 10,
     }
 
     parameters_string = str(parameters)
@@ -167,8 +168,7 @@ def benchmark(depth, trail):
     return optimal_depth, depth_result
 
 
-
 for trail in range(10):
     for depth in depth_range[gdv_name]:
-        optimal_depth, depth_result = benchmark(depth, trail)
+        optimal_depth, depth_result = benchmark(depth, trail, 0)
 
