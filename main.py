@@ -39,9 +39,6 @@ def main():
                   'seed': 19}  # pass the seed through gate costs
 
     parameters = {
-        # the number of qubits in the device
-        "nisq_qubits": temp["qubits"],
-
         # maximum depth of the search tree
         # after this depth, the leafs are evaluated
         # and only the path with minimum cost is kept in the tree
@@ -59,20 +56,25 @@ def main():
         "qubit_increase_factor": 3,
 
         "option_skipped_cnots": True,
-        "penalty_skipped_cnot": 200,
+        "penalty_skipped_cnot": 2000,
+
+        "option_divide_by_activated": False,
 
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
-        "option_attenuate": True,
-
-        # Should the initial mapping be chosen random?
-        "initial_map": K7MInitialMapping.HEURISTIC,
-
-        "unidirectional_coupling": False,
-
-        "dry_run": False,
-        "gate_costs": gate_costs,
+        "option_attenuate": False,
     }
+
+    parameters_string = str(parameters)
+
+    # the number of qubits in the device
+    parameters["nisq_qubits"] = temp["qubits"]
+    # Add the gate costs
+    parameters["gate_costs"] = gate_costs
+    # Should the initial mapping be chosen random?
+    parameters["initial_map"] = K7MInitialMapping.HEURISTIC
+    parameters["unidirectional_coupling"] = False
+    parameters["dry_run"] = False
 
     k7m = K7MCompiler(coupling, parameters)
     result = k7m.run(circ)

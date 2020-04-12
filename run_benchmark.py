@@ -113,8 +113,8 @@ def benchmark(depth, trail):
         "option_max_then_min": False,
         "qubit_increase_factor": 3,
 
-        "option_skipped_cnots": False,
-        "penalty_skipped_cnot": 200,
+        "option_skipped_cnots": True,
+        "penalty_skipped_cnot": 2000,
 
         "option_divide_by_activated" : False,
 
@@ -156,7 +156,7 @@ def benchmark(depth, trail):
     first_run = False
 
     with open(
-            "_private_data/BNTF/{}_{}_{}.csv".format(gdv_name,
+            "_private_data/BNTF/_{}_{}_{}.csv".format(gdv_name,
                                                      qubits[nr_qubits],
                                                   parameters_string
                                                      ),

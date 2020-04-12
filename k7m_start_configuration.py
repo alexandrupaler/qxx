@@ -149,8 +149,8 @@ def eval_cx_collection(cx_collection,
     # print("check", qubit, "tmp sum", temp_cost, "order", order)
     if parameters["option_skipped_cnots"]:
         sk_factor = nr_ops_skipped / len(cx_collection)
-        sk_factor *= sum_eval
-        sum_eval += plus_or_minus * sk_factor * parameters["penalty_skipped_cnot"]
+        sk_factor *= parameters["penalty_skipped_cnot"]
+        sum_eval += plus_or_minus * sk_factor
 
     """
         If the index increase did not add any additional CNOTs...math.inf cost?
