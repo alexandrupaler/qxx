@@ -121,7 +121,10 @@ def benchmark(depth, trail, varying_param):
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
         "option_attenuate": True,
-        "att_fact": 10,
+        # b \in [0, 10]
+        "att_b" : 4,
+        # c \in [0, 1]
+        "att_c" : 1,
     }
 
     parameters_string = str(parameters)

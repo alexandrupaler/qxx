@@ -136,11 +136,14 @@ def eval_cx_collection(cx_collection,
             # part1 *= factor
 
             # Go Gaussian
+            # x \in [0, 1]
             x = cnot_index/len(cx_collection)
-            f = (x - parameters["att_fact_c"]) ** 2
-            f = f / parameters["att_fact_b"]
-            f = math.exp(-f)
-            part1 *= parameters["att_fact_a"] * f
+            # b \in [0, 100]
+            b = parameters["att_b"]
+            # c \in [0, 1]
+            c = parameters["att_c"]
+            amplitude = math.exp(-b * (x - c) ** 2)
+            part1 *= amplitude
 
         sum_eval += plus_or_minus * part1
 
