@@ -17,7 +17,7 @@ def plot_experiment_results(benchmark_name):
     large_i += 1
 
     print(large_i, benchmark_name)
-
+    folder_name = os.path.dirname(benchmark_name)
 
 
     # for future qiskit experiment
@@ -78,12 +78,16 @@ def plot_experiment_results(benchmark_name):
         #     with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'a') as csvfile:
         #         csv.writer(csvfile).writerow([depth, depth_ratio[tool][i]])
         #     csvfile.close()
-        with open("{}_{}.avg".format(benchmark_name, tool), 'w') as csvfile:
+        """
+        Save AVG
+        """
+        # with open("{}_{}.avg".format(benchmark_name, tool), 'w') as csvfile:
+        with open("{}/{}_{}.avg".format(folder_name,large_i ,tool), 'w') as csvfile:
             writer = csv.writer(csvfile)
             for i in range(9):
                 depth = 5 * (i + 1)
                 writer.writerow([depth, depth_ratio[tool][i]])
-        # csvfile.close()
+        csvfile.close()
 
     """
     Load other files
@@ -117,7 +121,7 @@ def plot_experiment_results(benchmark_name):
         ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, 6)
 
     if len(other_tools) > 0:
         ax.legend()
@@ -125,7 +129,8 @@ def plot_experiment_results(benchmark_name):
     # fig.savefig('_private_data/BNTF/{}.png'.format(gdv_name), dpi=300)
     png_name = os.path.basename(benchmark_name)
     folder_name = os.path.dirname(benchmark_name)
-    fig.savefig('{}/{}{}.png'.format(folder_name,large_i,png_name), dpi=150)
+    # fig.savefig('{}/{}{}.png'.format(folder_name,large_i,png_name), dpi=150)
+    fig.savefig('{}/{}.png'.format(folder_name,large_i), dpi=150)
 
 
 """
@@ -143,7 +148,7 @@ for file in os.listdir(results_folder):
         plot_experiment_results(bench_name)
 
 ax_large.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-ax_large.set_ylim(2, 8)
+# ax_large.set_ylim(22, 27)
 ax_large.legend()
 
 fig_large.savefig('compare_all.png', dpi=150)

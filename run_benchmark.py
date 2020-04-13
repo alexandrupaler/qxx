@@ -11,7 +11,7 @@ from k7m_core import K7MCompiler, K7MInitialMapping
 gdv_name = "TFL"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
-    "BSS" : [100 * x for x in range(1, 10)]
+    "QSE" : [100 * x for x in range(1, 10)]
 }
 # gdv_name = "QSE"
 
@@ -34,17 +34,26 @@ def benchmark(depth, trail, varying_param):
     # solution_file_name = "_private_benchmark/meta/16QBT_{:02}CYC_{}_{}_solution.csv".format(
     #     depth, gdv_name, trail)
 
-    depth_string = "{:03}".format(depth)
-    folder = "BSS"
     if gdv_name == "TFL":
         folder = "BNTF"
         depth_string = "{:02}".format(depth)
+        name_end = "TFL"
+        if nr_qubits == 54:
+            name_end = "QSE"
+
+    elif gdv_name == "QSE":
+        folder = "BSS"
+        depth_string = "{:03}".format(depth)
+        name_end = "QSE"
+
+    # if nr_qubits==54:
+    #     gdv_name = "QSE"
 
     qasm_file_name = "_private_benchmark/{}/{}QBT_{}CYC_{}_{}.qasm".format(
-        folder, nr_qubits, depth_string, gdv_name, trail)
+        folder, nr_qubits, depth_string, name_end, trail)
 
     solution_file_name = "_private_benchmark/meta/{}QBT_{}CYC_{}_{}_solution.csv".format(
-        nr_qubits, depth_string, gdv_name, trail)
+        nr_qubits, depth_string, name_end, trail)
 
     # print("qiskit", depth)
     # input qasm file as circuit
@@ -86,8 +95,9 @@ def benchmark(depth, trail, varying_param):
                   'reset': 0, 'barrier': 0,
                   'u2': 1, 'u3': 1, 'U': 1,
 
-                  'cx': 10, 'CX': 10,
-                  "rev_cx_edge": 10,  # related to the edge in the coupling
+                  # 'cx': cx_cost,
+                  # 'CX': cx_cost,
+                  # "rev_cx_edge": cx_cost,  # related to the edge in the coupling
 
                   "ok": 0,
                   # update the costs
@@ -106,25 +116,28 @@ def benchmark(depth, trail, varying_param):
 
         # maximum number of children of a node
         # "max_children": qiskit_coupling_map.size(),
-        "max_children": 3,
+        "max_children": 4,
 
         # the first number_of_qubits * this factor the search maximises the cost
         # afterwards it minimises it
         "option_max_then_min": False,
         "qubit_increase_factor": 3,
 
-        "option_skipped_cnots": False,
-        "penalty_skipped_cnot": 20,
+        "option_skip_cx": False,
+        "penalty_skip_cx": 20,
 
-        "option_div_by_active" : False,
+        "opt_div_by_act" : False,
 
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
-        "option_attenuate": True,
+        "opt_att": True,
         # b \in [0, 10]
-        "att_b" : 4,
+        "att_b" : 50,
         # c \in [0, 1]
         "att_c" : 1,
+
+        "div_dist" : 2,
+        "cx" : 1
     }
 
     parameters_string = str(parameters)
@@ -134,9 +147,9 @@ def benchmark(depth, trail, varying_param):
     # Add the gate costs
     parameters["gate_costs"] = gate_costs
     # Should the initial mapping be chosen random?
-    parameters["initial_map"]= K7MInitialMapping.HEURISTIC
+    parameters["initial_map"] = K7MInitialMapping.HEURISTIC
     parameters["unidirectional_coupling"]=False
-    parameters["dry_run"]= False
+    parameters["dry_run"] = False
 
     k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
     map_test_circuit = k7mcomp.run(test_circuit)
@@ -160,7 +173,7 @@ def benchmark(depth, trail, varying_param):
     first_run = False
 
     with open(
-            "_private_data/BNTF/_{}_{}_{}.csv".format(gdv_name,
+            "_private_data/BNTF/_{}_{}_{}.csv".format(name_end,
                                                      qubits[nr_qubits],
                                                   parameters_string
                                                      ),

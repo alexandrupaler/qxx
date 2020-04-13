@@ -3,8 +3,10 @@ import numpy
 import qiskit
 import enum
 
+from qiskit.transpiler import PassManager, Layout
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.converters import circuit_to_dag, dag_to_circuit
+from qiskit.transpiler.passes import StochasticSwap, SetLayout, ApplyLayout
 
 from k7m_coupling import K7MCoupling
 from k7m_positions import K7MPositions
@@ -51,6 +53,17 @@ class K7MCompiler(TransformationPass):
         #
         # return quantum_circuit
         # print(".......")
+
+        original_pm = PassManager()
+        optimal_layout = Layout()
+        for c_idx, p_idx in enumerate(initial_mapping):
+            optimal_layout.add(quantum_circuit.qregs[0][c_idx], p_idx)
+
+        original_pm.append([SetLayout(optimal_layout),
+                            ApplyLayout(),
+                            StochasticSwap(self.coupling_obj.coupling)])
+
+        return original_pm.run(quantum_circuit)
 
 
         if self.positions_obj == None:

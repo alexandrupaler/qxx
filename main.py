@@ -55,14 +55,18 @@ def main():
         "option_max_then_min": False,
         "qubit_increase_factor": 3,
 
-        "option_skipped_cnots": True,
-        "penalty_skipped_cnot": 2000,
+        "option_skip_cx": False,
+        "penalty_skip_cx": 20,
 
-        "option_divide_by_activated": False,
+        "opt_div_by_act": True,
 
         # later changes in the mapping should not affect
         # the initial mapping of the circuit
-        "option_attenuate": False,
+        "opt_att": True,
+        # b \in [0, 10]
+        "att_b": 0,
+        # c \in [0, 1]
+        "att_c": 1,
     }
 
     parameters_string = str(parameters)

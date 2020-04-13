@@ -31,7 +31,8 @@ def get_distance_linear(c1, c2):
     return abs(c1 - c2)
 
 
-def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys, coupling_object):
+def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys,
+                         coupling_object, div_dist):
 
     minq = min(circ_q1, circ_q2)
     maxq = max(circ_q1, circ_q2)
@@ -47,8 +48,11 @@ def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys, coupl
     dist = abs(coupling_object.coupling_dist[phys_idx1][phys_idx2] - offsets[minq] - offsets[maxq])
 
     if dist > 1:
-        offsets[minq] += dist // 2 - 1
-        offsets[maxq] -= dist // 2 - 1
+        rest =  dist - (dist / div_dist) - 1
+        offsets[minq] += dist / div_dist - 1
+        offsets[maxq] -= rest
+        # offsets[minq] += dist // 2 - 1
+        # offsets[maxq] -= dist // 2 - 1
 
     return dist
 
@@ -90,7 +94,11 @@ def eval_cx_collection(cx_collection,
         if q_tuple[0] > circ_qub_idx_limit or q_tuple[1] > circ_qub_idx_limit:
             # increment the number of skipped gates from the collection
             nr_ops_skipped += 1
-        else:
+        # else:
+        #     nr_ops_active += 1
+
+        if q_tuple[0] <= circ_qub_idx_limit and q_tuple[1] <= circ_qub_idx_limit:
+            # increment the number of skipped gates from the collection
             nr_ops_active += 1
 
         if q_tuple[0] == circ_qub_idx_limit or q_tuple[1] == circ_qub_idx_limit:
@@ -113,28 +121,10 @@ def eval_cx_collection(cx_collection,
                                      q_tuple[1],
                                      circ_qub_accumulated_offsets,
                                      local_circuit_to_phys,
-                                     coupling_object)
+                                     coupling_object,
+                                     parameters["div_dist"])
 
-        if parameters["option_attenuate"]:
-            # later changes in the layout should not affect
-            # the beginning of the circuit
-
-            # factor = len(cx_collection) / cnot_index
-            # part1 *= factor
-
-            # factor = 0.0001 + parameters["att_fact"] * (len(cx_collection) - cnot_index)/len(cx_collection)
-            # part1 *= (1 - factor)
-            # part1 *= math.log(1 + mult * factor, 2)
-            # part1 *= math.log(mult * factor, 2)
-
-            # part1 *=  math.exp(factor)
-            # part1 *= math.exp(len(cx_collection) - cnot_index)
-
-            # factor = cnot_index * cnot_index
-            # part1 /= factor
-
-            # part1 *= factor
-
+        if parameters["opt_att"]:
             # Go Gaussian
             # x \in [0, 1]
             x = cnot_index/len(cx_collection)
@@ -156,19 +146,26 @@ def eval_cx_collection(cx_collection,
     # print(limit, sum_eval)
 
     # print("check", qubit, "tmp sum", temp_cost, "order", order)
-    if parameters["option_skipped_cnots"]:
+    if parameters["option_skip_cx"]:
         sk_factor = nr_ops_skipped #/ len(cx_collection)
-        sk_factor *= parameters["penalty_skipped_cnot"]
+        sk_factor *= parameters["penalty_skip_cx"]
         sum_eval += plus_or_minus * sk_factor
 
     """
         If the index increase did not add any additional CNOTs...math.inf cost?
     """
-    if parameters["option_div_by_active"]:
+    if parameters["opt_div_by_act"]:
+        # if nr_ops_at_idx_limit > 0:
+        #     sum_eval /= nr_ops_at_idx_limit
+        # else:
+        #     sum_eval = math.inf
+
+        # Average cost per CNOT
         if nr_ops_at_idx_limit > 0:
             sum_eval /= nr_ops_at_idx_limit
-        else:
-            sum_eval = math.inf
+        # else:
+        #     # sum_eval = math.inf
+        #     sum_eval = math.inf
 
     return sum_eval
 

@@ -22,7 +22,11 @@ class K7MCoupling:
             these do not exist in the coupling
             Theoretically, reverse edges could have a different cost.
         """
-        self.add_reverse_edges_and_weights(parameters["gate_costs"])
+        # self.add_reverse_edges_and_weights(parameters["gate_costs"])
+        self.add_reverse_edges_and_weights({
+            "cx" : parameters["cx"],
+            "rev_cx_edge" : parameters["cx"]
+        })
 
         '''
             Prepare the Floyd Warshall graph and weight matrix
