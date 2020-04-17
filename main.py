@@ -52,7 +52,7 @@ def main():
 
         # the first number_of_qubits * this factor the search maximises the cost
         # afterwards it minimises it
-        "option_max_then_min": False,
+        "opt_max_t_min": False,
         "qubit_increase_factor": 3,
 
         "option_skip_cx": False,

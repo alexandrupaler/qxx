@@ -8,6 +8,8 @@ from ast import literal_eval
 
 from k7m_core import K7MCompiler, K7MInitialMapping
 
+import time
+
 gdv_name = "TFL"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
@@ -22,7 +24,7 @@ qubits = {
     54 : "Sycamore"
 }
 
-nr_qubits = 16
+nr_qubits = 54
 
 first_run = True
 
@@ -95,10 +97,6 @@ def benchmark(depth, trail, varying_param):
                   'reset': 0, 'barrier': 0,
                   'u2': 1, 'u3': 1, 'U': 1,
 
-                  # 'cx': cx_cost,
-                  # 'CX': cx_cost,
-                  # "rev_cx_edge": cx_cost,  # related to the edge in the coupling
-
                   "ok": 0,
                   # update the costs
                   "rev_cnot": 4 * 1 + 10,  # 4 u2/hadamard + 1 cnot
@@ -111,16 +109,16 @@ def benchmark(depth, trail, varying_param):
         # after this depth, the leafs are evaluated
         # and only the path with minimum cost is kept in the tree
         # thus, the tree is pruned
-        "max_depth": test_circuit.n_qubits,
+        "max_depth": test_circuit.n_qubits//2,
         # "max_depth": test_circuit.n_qubits/4,
 
         # maximum number of children of a node
         # "max_children": qiskit_coupling_map.size(),
-        "max_children": 4,
+        "max_children": 2,
 
         # the first number_of_qubits * this factor the search maximises the cost
         # afterwards it minimises it
-        "option_max_then_min": False,
+        "opt_max_t_min": False,
         "qubit_increase_factor": 3,
 
         "option_skip_cx": False,
@@ -132,12 +130,12 @@ def benchmark(depth, trail, varying_param):
         # the initial mapping of the circuit
         "opt_att": True,
         # b \in [0, 10]
-        "att_b" : 50,
+        "att_b" : -10,
         # c \in [0, 1]
         "att_c" : 1,
 
         "div_dist" : 2,
-        "cx" : 1
+        "cx" : 0.01
     }
 
     parameters_string = str(parameters)
@@ -152,10 +150,14 @@ def benchmark(depth, trail, varying_param):
     parameters["dry_run"] = False
 
     k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
+
+    execution_time = time.time()
     map_test_circuit = k7mcomp.run(test_circuit)
+    execution_time = time.time() - execution_time
 
     # print(map_test_circuit.draw(output="text", fold=-1))
-    tmp_circuit = map_test_circuit.decompose()
+    # tmp_circuit = map_test_circuit.decompose()
+    tmp_circuit = map_test_circuit
     # print(tmp_circuit.draw(output="text", fold=-1))
     # tmp_circuit = qiskit_to_tk(map_test_circuit)
     # Transform.RebaseToQiskit().DecomposeSWAPtoCX().apply(tmp_circuit)
@@ -179,7 +181,7 @@ def benchmark(depth, trail, varying_param):
                                                      ),
             file_op_type) as csvFile:
         writer = csv.writer(csvFile)
-        writer.writerow([trail, "k7m", optimal_depth, depth_result])
+        writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
 
     return optimal_depth, depth_result
 

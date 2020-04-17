@@ -121,7 +121,7 @@ def plot_experiment_results(benchmark_name):
         ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-    ax.set_ylim(0, 6)
+    # ax.set_ylim(0, 6)
 
     if len(other_tools) > 0:
         ax.legend()

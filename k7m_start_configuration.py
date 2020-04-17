@@ -48,7 +48,7 @@ def get_distance_offsets(circ_q1, circ_q2, offsets, local_circuit_to_phys,
     dist = abs(coupling_object.coupling_dist[phys_idx1][phys_idx2] - offsets[minq] - offsets[maxq])
 
     if dist > 1:
-        rest =  dist - (dist / div_dist) - 1
+        rest =  dist - (dist / div_dist) + 1
         offsets[minq] += dist / div_dist - 1
         offsets[maxq] -= rest
         # offsets[minq] += dist // 2 - 1
@@ -105,10 +105,13 @@ def eval_cx_collection(cx_collection,
             nr_ops_at_idx_limit += 1
 
 
+    nr_gate = 0
     for cnot_index, q_tuple in enumerate(cx_collection):
 
         if q_tuple[0] > circ_qub_idx_limit or q_tuple[1] > circ_qub_idx_limit:
             continue
+
+        nr_gate += 1
 
         # this is a linear distance between the qubits
         # it does not take into consideration the architecture
@@ -127,7 +130,8 @@ def eval_cx_collection(cx_collection,
         if parameters["opt_att"]:
             # Go Gaussian
             # x \in [0, 1]
-            x = cnot_index/len(cx_collection)
+            # x = cnot_index/len(cx_collection)
+            x = nr_gate/nr_ops_active
             # b \in [0, 100]
             b = parameters["att_b"]
             # c \in [0, 1]
@@ -292,7 +296,7 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
             # # afterwards the costs have to decrease
             #
             reverse_cond = 1
-            if parameters["option_max_then_min"]:
+            if parameters["opt_max_t_min"]:
                 if circ_qub_idx < nr_nisq_qubits / parameters["qubit_increase_factor"]:
                     # this condition is checked
                     # if the cost should be maximised -> towards start of permutation
