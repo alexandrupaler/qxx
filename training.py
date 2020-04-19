@@ -250,12 +250,12 @@ with open("_private_data/training.csv", "w",  buffering=1) as csvFile:
     writer.writerow(header)
     print(*header)
 
-    for m_depth_p in range(1, nr_qubits, 2):
-        for m_c_p in range(1, nr_qubits, 2):
-            for b_p in range(-10, 10, 2):
-                for c_p in range(-10, 10, 5):
-                    for div_p in range(1, 10, 1):
-                        for cx_p in range(1, 10, 1):
+    for m_depth_p in range(1, nr_qubits + 2, 4):
+        for m_c_p in range(1, nr_qubits + 2, 4):
+            for b_p in range(-10, 11, 2):
+                for c_p in range(-10, 11, 5):
+                    for div_p in range(2, 11, 2):
+                        for cx_p in range(2, 11, 2):
 
                             for trail in range(10):
                                 for depth in depth_range[gdv_name]:
