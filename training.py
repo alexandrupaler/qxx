@@ -242,7 +242,7 @@ header = ["max_page_ranke", "nr_conn_comp", "edges", "nodes",
           "total_time", "init_time",
           "nr_t1", "nr_t2"]
 
-with open("_private_data/training.csv", "w",  buffering=1) as csvFile:
+with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFile:
     writer = csv.writer(csvFile)
     # writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
 
@@ -254,8 +254,8 @@ with open("_private_data/training.csv", "w",  buffering=1) as csvFile:
         for m_c_p in range(1, nr_qubits + 2, 4):
             for b_p in range(-10, 11, 2):
                 for c_p in range(-10, 11, 5):
-                    for div_p in range(2, 11, 2):
-                        for cx_p in range(2, 11, 2):
+                    for div_p in range(2, 11, 4):
+                        for cx_p in range(2, 11, 4):
 
                             for trail in range(10):
                                 for depth in depth_range[gdv_name]:
@@ -279,9 +279,12 @@ with open("_private_data/training.csv", "w",  buffering=1) as csvFile:
                                         "opt_div_by_act": False,
                                     }
 
-                                    analysis = circuit_analysis(depth, trail)
+                                    # analysis = circuit_analysis(depth, trail)
+                                    analysis = ("n/a", "|")
                                     res =  benchmark(depth, trail, parameters)
-                                    line = analysis + res + (trail, )
+                                    params = ("|", m_depth_p, m_c_p, b_p, c_p, div_p, cx_p, depth, trail)
+                                    line = analysis + res + params
+
                                     print(line)
                                     writer.writerow(line)
 
