@@ -1,4 +1,6 @@
 import copy
+import time
+
 import numpy
 import qiskit
 import enum
@@ -38,6 +40,8 @@ class K7MCompiler(TransformationPass):
 
         dag_circuit = circuit_to_dag(quantum_circuit)
 
+        init_time = time.time()
+
         initial_mapping = []
         if self.parameters["initial_map"] == K7MInitialMapping.RANDOM:
             # Only the first positions which correspond to the circuit qubits
@@ -49,6 +53,7 @@ class K7MCompiler(TransformationPass):
         elif self.parameters["initial_map"] == K7MInitialMapping.HEURISTIC:
             initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
 
+        init_time = time.time() - init_time
 
         # print(initial_mapping)
         #
@@ -65,31 +70,37 @@ class K7MCompiler(TransformationPass):
                             StochasticSwap(self.coupling_obj.coupling),
                             Decompose(gate=qiskit.extensions.SwapGate)])
 
-        return original_pm.run(quantum_circuit)
-
-
-        if self.positions_obj == None:
-            self.positions_obj = K7MPositions(dag_circuit,
-                                              self.parameters,
-                                              initial_mapping)
-        '''
-            Start with an initial configuration
-        '''
-        compiled_dag, back_stack = self.find_solution(dag_circuit, self.parameters["dry_run"])
+        return original_pm.run(quantum_circuit), init_time, initial_mapping
 
         """
-            Returning here stops backtracking -> A full backtrack is not available,
-            but the following code, after having iterated through the possible
-            configurations (code before here):
-            * counts the most common configuration
-            * computes for each configuration the cost
-            * chooses the configuration of minimum cost
+            NAIVE ROUTING
         """
+        # if self.positions_obj == None:
+        #     self.positions_obj = K7MPositions(dag_circuit,
+        #                                       self.parameters,
+        #                                       initial_mapping)
+        # '''
+        #     Start with an initial configuration
+        # '''
+        # compiled_dag, back_stack = self.find_solution(dag_circuit, self.parameters["dry_run"])
+        # 
+        # """
+        #     Returning here stops backtracking -> A full backtrack is not available,
+        #     but the following code, after having iterated through the possible
+        #     configurations (code before here):
+        #     * counts the most common configuration
+        #     * computes for each configuration the cost
+        #     * chooses the configuration of minimum cost
+        # """
+        # 
+        # # Clean the positions
+        # self.positions_obj = None
+        # 
+        # return dag_to_circuit(compiled_dag)
 
-        # Clean the positions
-        self.positions_obj = None
-
-        return dag_to_circuit(compiled_dag)
+        """
+            BACKTRACKING
+        """
 
         # name = compiled_dag.name or None
         # circuit = qiskit.QuantumCircuit(*compiled_dag.qregs.values(), *compiled_dag.cregs.values(), name=name)

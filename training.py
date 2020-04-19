@@ -42,7 +42,41 @@ def convert_to_weighted_graph(multigraph):
 
     return G
 
-def circuit_analysis(depth, trail, varying_param):
+
+def dfs(i, visited, goesTo):
+    # If it is already visited
+    if (visited[i] == 1):
+        return 0
+
+    visited[i] = 1
+    x = dfs(goesTo[i], visited, goesTo)
+
+    return (x + 1)
+
+
+def noOfTranspositions(P1, P, n):
+    visited = [0] * n
+
+    # This array stores which element goes to which position
+    goesTo = [0] * n
+    # building the goesTo[] array
+    for i in range(n):
+        goesTo[P[i]] = P1[i]
+
+    # Initializing visited[] array
+    for i in range(0, n):
+        visited[i] = 0
+
+    transpositions = 0
+
+    for i in range(0, n):
+        if (visited[i] == 0):
+            ans = dfs(i, visited, goesTo)
+            transpositions += ans - 1
+
+    return transpositions
+
+def circuit_analysis(depth, trail):
     if gdv_name == "TFL":
         folder = "BNTF"
         depth_string = "{:02}".format(depth)
@@ -60,9 +94,6 @@ def circuit_analysis(depth, trail, varying_param):
 
     qasm_file_name = "_private_benchmark/{}/{}QBT_{}CYC_{}_{}.qasm".format(
         folder, nr_qubits, depth_string, name_end, trail)
-
-    solution_file_name = "_private_benchmark/meta/{}QBT_{}CYC_{}_{}_solution.csv".format(
-        nr_qubits, depth_string, name_end, trail)
 
     # print("qiskit", depth)
     # input qasm file as circuit
@@ -90,13 +121,7 @@ def circuit_analysis(depth, trail, varying_param):
            nx.s_metric(dag_circ._multi_graph, False)
 
 
-def benchmark(depth, trail, varying_param):
-
-    # qasm_file_name = "_private_benchmark/BNTF/16QBT_{:02}CYC_{}_{}.qasm".format(
-    #     depth, gdv_name, trail)
-    #
-    # solution_file_name = "_private_benchmark/meta/16QBT_{:02}CYC_{}_{}_solution.csv".format(
-    #     depth, gdv_name, trail)
+def benchmark(depth, trail, parameters):
 
     if gdv_name == "TFL":
         folder = "BNTF"
@@ -133,7 +158,7 @@ def benchmark(depth, trail, varying_param):
         for original_node in csv.reader(csvfile, delimiter=','):
             original_nodes.append(literal_eval(original_node[0]))
     csvfile.close()
-    print(original_nodes)
+    # print(original_nodes)
 
     for i in range(len(original_nodes)):
         qiskit_layout_dict[test_circuit.qregs[0][i]] = original_nodes[i]
@@ -149,7 +174,7 @@ def benchmark(depth, trail, varying_param):
                         BasicSwap(qiskit_coupling_map)])
     map_original_circuit = original_pm.run(test_circuit)
     optimal_depth = map_original_circuit.depth()
-    print("optimal mapping: the circuit has", optimal_depth, "cycles")
+    # print("optimal mapping: the circuit has", optimal_depth, "cycles")
     # print(map_original_circuit.draw(style="text"))
     # construct passes that use the DenseLayout+StochasticSwap without initial mapping
 
@@ -168,41 +193,8 @@ def benchmark(depth, trail, varying_param):
 
                   'seed': 19}  # pass the seed through gate costs
 
-    parameters = {
-        # maximum depth of the search tree
-        # after this depth, the leafs are evaluated
-        # and only the path with minimum cost is kept in the tree
-        # thus, the tree is pruned
-        "max_depth": test_circuit.n_qubits//2,
-        # "max_depth": test_circuit.n_qubits/4,
 
-        # maximum number of children of a node
-        # "max_children": qiskit_coupling_map.size(),
-        "max_children": 2,
-
-        # the first number_of_qubits * this factor the search maximises the cost
-        # afterwards it minimises it
-        "opt_max_t_min": False,
-        "qubit_increase_factor": 3,
-
-        "option_skip_cx": False,
-        "penalty_skip_cx": 20,
-
-        "opt_div_by_act" : False,
-
-        # later changes in the mapping should not affect
-        # the initial mapping of the circuit
-        "opt_att": True,
-        # b \in [0, 10]
-        "att_b" : -10,
-        # c \in [0, 1]
-        "att_c" : 1,
-
-        "div_dist" : 2,
-        "cx" : 0.01
-    }
-
-    parameters_string = str(parameters)
+    # parameters_string = str(parameters)
 
     # the number of qubits in the device
     parameters["nisq_qubits"] = qiskit_coupling_map.size()
@@ -216,7 +208,7 @@ def benchmark(depth, trail, varying_param):
     k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
 
     execution_time = time.time()
-    map_test_circuit, init_time = k7mcomp.run(test_circuit)
+    map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)
     execution_time = time.time() - execution_time
 
     # print(map_test_circuit.draw(output="text", fold=-1))
@@ -227,33 +219,71 @@ def benchmark(depth, trail, varying_param):
     # Transform.RebaseToQiskit().DecomposeSWAPtoCX().apply(tmp_circuit)
     depth_result = tmp_circuit.depth()
 
-    print("k7m mapping: the circuit has", depth_result, "cycles")
+    # print("k7m mapping: the circuit has", depth_result, "cycles")
     # print(map_test_circuit.draw(style="text"))
     # accumulate result
-    print("----")
+    # print("----")
 
-    file_op_type = "a"
-    global first_run
-    if first_run:
-        file_op_type = "w"
-    first_run = False
-
-    with open(
-            "_private_data/BNTF/_{}_{}_{}.csv".format(name_end,
-                                                     qubits[nr_qubits],
-                                                  parameters_string
-                                                     ),
-            file_op_type) as csvFile:
-        writer = csv.writer(csvFile)
-        writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
-
-    return optimal_depth, depth_result, execution_time, init_time
+    nr_t1 = noOfTranspositions( list(range(nr_qubits)), original_nodes, nr_qubits)
+    nr_t2 = noOfTranspositions(original_nodes, init_map, nr_qubits)
 
 
-for trail in range(10):
-    for depth in depth_range[gdv_name]:
-        analysis = circuit_analysis(depth, trail, 0)
-        print(analysis)
+    return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
 
-        # optimal_depth, depth_result = benchmark(depth, trail, 0)
+
+file_op_type = "a"
+if first_run:
+    file_op_type = "w"
+first_run = False
+
+header = ["max_page_ranke", "nr_conn_comp", "edges", "nodes",
+          "efficiency", "smetric",
+          "optimal_depth", "res_depth",
+          "total_time", "init_time",
+          "nr_t1", "nr_t2"]
+
+with open("_private_data/training.csv", "w",  buffering=1) as csvFile:
+    writer = csv.writer(csvFile)
+    # writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
+
+
+    writer.writerow(header)
+    print(*header)
+
+    for m_depth_p in range(1, nr_qubits, 2):
+        for m_c_p in range(1, nr_qubits, 2):
+            for b_p in range(-10, 10, 2):
+                for c_p in range(-10, 10, 5):
+                    for div_p in range(1, 10, 1):
+                        for cx_p in range(1, 10, 1):
+
+                            for trail in range(10):
+                                for depth in depth_range[gdv_name]:
+
+                                    parameters = {
+                                        "max_depth": m_depth_p,
+                                        "max_children": m_c_p,
+
+                                        "att_b": b_p,
+                                        "att_c": c_p / 10,
+
+                                        "div_dist": div_p / 10,
+                                        "cx": cx_p,
+
+                                        # UNUSED
+                                        "opt_att": True,
+                                        "opt_max_t_min": False,
+                                        "qubit_increase_factor": 3,
+                                        "option_skip_cx": False,
+                                        "penalty_skip_cx": 20,
+                                        "opt_div_by_act": False,
+                                    }
+
+                                    analysis = circuit_analysis(depth, trail)
+                                    res =  benchmark(depth, trail, parameters)
+                                    line = analysis + res + (trail, )
+                                    print(line)
+                                    writer.writerow(line)
+
+                                    csvFile.flush()
 
