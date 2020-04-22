@@ -1,5 +1,10 @@
 # Evaluation of parameter configurations
 
+## Goals
+Choose parameter values such that one of the following is achieved:
+1. `res_depth` is minimised to ideally `optimum_depth`
+2. `res_depth * init_time` is minimised, meaning that a good trade-off is 
+reached wrt. heuristic execution time.
 
 ## Circuit analysis
 
