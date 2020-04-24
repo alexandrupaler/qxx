@@ -13,6 +13,9 @@ import time
 from qiskit.converters import circuit_to_dag
 import networkx as nx
 
+import getopt, sys
+from random import random
+
 gdv_name = "TFL"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
@@ -242,61 +245,157 @@ header = ["max_page_ranke", "nr_conn_comp", "edges", "nodes",
           "total_time", "init_time",
           "nr_t1", "nr_t2"]
 
-with open("circuits_analysis.csv", "w",  buffering=1) as csvFile:
-    writer = csv.writer(csvFile)
-    writer.writerow(header)
-    print(*header)
 
+# this encapsulates what the original script was doing
+def main():
+    with open("circuits_analysis.csv", "w", buffering=1) as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerow(header)
+        print(*header)
+
+        for trail in range(10):
+            for depth in depth_range[gdv_name]:
+                analysis = (depth, trail) + circuit_analysis(depth, trail)
+                print(analysis)
+                writer.writerow(analysis)
+                csvFile.flush()
+
+    with open("_private_data/training_no_analysis.csv", "w", buffering=1) as csvFile:
+        writer = csv.writer(csvFile)
+
+        writer.writerow(header)
+        print(*header)
+
+        for m_depth_p in range(1, nr_qubits + 2, 4):
+            for m_c_p in range(1, nr_qubits + 2, 4):
+                for b_p in range(-10, 11, 2):
+                    for c_p in range(-10, 11, 5):
+                        for div_p in range(2, 11, 4):
+                            for cx_p in range(2, 11, 4):
+
+                                for trail in range(10):
+                                    for depth in depth_range[gdv_name]:
+                                        parameters = {
+                                            "max_depth": m_depth_p,
+                                            "max_children": m_c_p,
+
+                                            "att_b": b_p,
+                                            "att_c": c_p / 10,
+
+                                            "div_dist": div_p / 10,
+                                            "cx": cx_p,
+
+                                            # UNUSED
+                                            "opt_att": True,
+                                            "opt_max_t_min": False,
+                                            "qubit_increase_factor": 3,
+                                            "option_skip_cx": False,
+                                            "penalty_skip_cx": 20,
+                                            "opt_div_by_act": False,
+                                        }
+
+                                        analysis = ("n/a", "|")
+                                        res = benchmark(depth, trail, parameters)
+                                        params = ("|", m_depth_p, m_c_p, b_p, c_p, div_p, cx_p, depth, trail)
+                                        line = analysis + res + params
+
+                                        print(line)
+                                        writer.writerow(line)
+
+                                        csvFile.flush()
+
+
+# this is meant to be called from WRS
+def main_wrs(argumentList):
+    unixOptions = "w:d:b:c:e:m:"
+    gnuOptions = ["max_breadth=", "max_depth=", "attr_b=", "attr_c=", "edge_cost=", "movement_factor="]
+
+    try:
+        arguments, values = getopt.getopt(argumentList, unixOptions, gnuOptions)
+    except getopt.error as err:
+        # output error, and return with an error code
+        print(str(err))
+        sys.exit(2)
+
+    argumentsDict = dict(arguments)
+
+    # 1 to 55 increment of 1
+    max_breadth = int(getValue(argumentsDict, '-w', '--max_breadth', 1))
+
+    # 2 to 55 increment of 1
+    max_depth = int(getValue(argumentsDict, '-d', '--max_depth', 2))
+
+    # -50 to 50 increment of 0.1
+    attr_b = float(getValue(argumentsDict, '-b', '--attr_b', -50))
+
+    # -1 to 1 increment of 0.1
+    attr_c = float(getValue(argumentsDict, '-c', '--attr_c', -1))
+
+    # 0.1 to 1 increment of 0.1
+    edge_cost = float(getValue(argumentsDict, '-e', '--edge_cost', 0.1))
+
+    # 1 to 55 increment of 1
+    movement_factor = int(getValue(argumentsDict, '-m', '--movement_factor', 1))
+
+    print("-----")
+    print("Evaluating for max_breadth={}, max_depth={}, attr_b={}, attr_c={}, edge_cost={}, movement_factor={}".format(
+        max_breadth,
+        max_depth,
+        attr_b,
+        attr_c,
+        edge_cost,
+        movement_factor
+    ))
+
+    # compute target value (score) here !!!
+    parameters = {
+        "max_depth": max_depth,
+        "max_children": max_breadth,
+
+        "att_b": attr_b,
+        "att_c": attr_c,
+
+        "cx": edge_cost,
+        "div_dist": movement_factor,
+
+        # UNUSED
+        "opt_att": True,
+        "opt_max_t_min": False,
+        "qubit_increase_factor": 3,
+        "option_skip_cx": False,
+        "penalty_skip_cx": 20,
+        "opt_div_by_act": False,
+    }
+
+    # there are two additional params here: trail and depth which I don't know how to set
     for trail in range(10):
         for depth in depth_range[gdv_name]:
-            analysis = (depth, trail) + circuit_analysis(depth, trail)
-            print(analysis)
-            writer.writerow(analysis)
-            csvFile.flush()
+            # benchmark returns several value, which is the target one ?
+            # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
+            res = benchmark(depth, trail, parameters)
+            print(res)
+
+    # TODO - change this with the actual value
+    target_value = random()
+
+    print("Target value is {}".format(target_value))
+    print("______")
+
+    # This is to return the value to the caller
+    sys.stdout.write(str(target_value))
+    sys.stdout.flush()
+    sys.exit(0)
 
 
-with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFile:
-    writer = csv.writer(csvFile)
+def getValue(dictionary, shortKey, longKey, default):
+    return dictionary.get(shortKey, dictionary.get(longKey, default))
 
-    writer.writerow(header)
-    print(*header)
 
-    for m_depth_p in range(1, nr_qubits + 2, 4):
-        for m_c_p in range(1, nr_qubits + 2, 4):
-            for b_p in range(-10, 11, 2):
-                for c_p in range(-10, 11, 5):
-                    for div_p in range(2, 11, 4):
-                        for cx_p in range(2, 11, 4):
+if __name__ == "__main__":
+    has_params = len(sys.argv) > 1
+    if has_params:
+        wrs = sys.argv[1]
+        if wrs == 'WRS':
+            main_wrs(sys.argv[2:])
 
-                            for trail in range(10):
-                                for depth in depth_range[gdv_name]:
-
-                                    parameters = {
-                                        "max_depth": m_depth_p,
-                                        "max_children": m_c_p,
-
-                                        "att_b": b_p,
-                                        "att_c": c_p / 10,
-
-                                        "div_dist": div_p / 10,
-                                        "cx": cx_p,
-
-                                        # UNUSED
-                                        "opt_att": True,
-                                        "opt_max_t_min": False,
-                                        "qubit_increase_factor": 3,
-                                        "option_skip_cx": False,
-                                        "penalty_skip_cx": 20,
-                                        "opt_div_by_act": False,
-                                    }
-
-                                    analysis = ("n/a", "|")
-                                    res =  benchmark(depth, trail, parameters)
-                                    params = ("|", m_depth_p, m_c_p, b_p, c_p, div_p, cx_p, depth, trail)
-                                    line = analysis + res + params
-
-                                    print(line)
-                                    writer.writerow(line)
-
-                                    csvFile.flush()
-
+    main()

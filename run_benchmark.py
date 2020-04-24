@@ -13,9 +13,6 @@ import time
 from qiskit.converters import circuit_to_dag
 import networkx as nx
 
-import getopt, sys
-from random import random
-
 gdv_name = "TFL"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
@@ -260,62 +257,3 @@ for trail in range(10):
 
         # optimal_depth, depth_result = benchmark(depth, trail, 0)
 
-def main(argumentList):
-    unixOptions = "mb:md:b:c:ec:mf:"
-    gnuOptions = ["max_breadth=", "max_depth=", "attr_b=", "attr_c=", "edge_cost=", "movement_factor="]
-
-    try:
-        arguments, values = getopt.getopt(argumentList, unixOptions, gnuOptions)
-    except getopt.error as err:
-        # output error, and return with an error code
-        print(str(err))
-        sys.exit(2)
-
-    argumentsDict = dict(arguments)
-
-    # 1 to 55 increment of 1
-    max_breadth = int(getValue(argumentsDict, '-mb', '--max_breadth', 1))
-
-    # 2 to 55 increment of 1
-    max_depth = int(getValue(argumentsDict, '-md', '--max_depth', 2))
-
-    # -50 to 50 increment of 0.1
-    attr_b = float(getValue(argumentsDict, '-b', '--attr_b', -50))
-
-    # -1 to 1 increment of 0.1
-    attr_c = float(getValue(argumentsDict, '-c', '--attr_c', -1))
-
-    # 0.1 to 1 increment of 0.1
-    edge_cost = float(getValue(argumentsDict, '-ec', '--edge_cost', -1))
-
-    # 1 to 55 increment of 1
-    movement_factor = int(getValue(argumentsDict, '-mf', '--movement_factor', -1))
-
-    print("-----")
-    print("Evaluating for max_breadth={}, max_depth={}, attr_b={}, attr_c={}, edge_cost={}, movement_factor={}".format(
-        max_breadth,
-        max_depth,
-        attr_b,
-        attr_c,
-        edge_cost,
-        movement_factor
-    ))
-
-    # compute target value (score) here !!!
-    target_value = random()
-
-    print("Target value is {}".format(target_value))
-    print("______")
-
-    # This is to return the value to the caller
-    sys.stdout.write(str(target_value))
-    sys.stdout.flush()
-    sys.exit(0)
-
-
-def getValue(dictionary, shortKey, longKey, default):
-    return dictionary.get(shortKey, dictionary.get(longKey, default))
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
