@@ -16,7 +16,6 @@ import networkx as nx
 import getopt, sys
 from statistics import mean
 
-
 gdv_name = "TFL"
 depth_range = {
     "TFL": [5 * x for x in range(1, 10)],
@@ -366,7 +365,6 @@ def main_wrs(argumentList):
         "opt_div_by_act": False,
     }
 
-    # optimizing avg(depth_result)
     depths = []
     for trail in range(10):
         for depth in depth_range[gdv_name]:
@@ -375,6 +373,7 @@ def main_wrs(argumentList):
             depths.append(res[1])
             print(res)
 
+    # optimizing avg(depth_result)
     target_value = mean(depths)
 
     print("Target value is {}".format(target_value))
