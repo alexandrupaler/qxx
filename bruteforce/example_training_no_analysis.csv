@@ -1,4 +1,4 @@
-n/a,|,optimal_depth,res_depth,total_time,init_time,nr_t1,nr_t2,|,max_depth,max_children,att_b,att_c,div_dist,cx,depth,trail
+n/a,*,optimal_depth,res_depth,total_time,init_time,nr_t1,nr_t2,|,max_depth,max_children,att_b,att_c,div_dist,cx,depth,trail
 n/a,|,5,23,0.08090710639953613,0.0038917064666748047,14,15,|,1,1,-10,-10,2,2,5,0
 n/a,|,10,50,0.14394068717956543,0.005239725112915039,14,14,|,1,1,-10,-10,2,2,10,0
 n/a,|,15,70,0.23106884956359863,0.0055124759674072266,14,10,|,1,1,-10,-10,2,2,15,0
