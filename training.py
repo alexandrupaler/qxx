@@ -365,16 +365,18 @@ def main_wrs(argumentList):
         "opt_div_by_act": False,
     }
 
-    depths = []
+    scores = []
     for trail in range(10):
         for depth in depth_range[gdv_name]:
             # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
             res = benchmark(depth, trail, parameters)
-            depths.append(res[1])
+            # since we know optimal_depth and depth_result I guess it would make sense to optimize their square diff.
+            score = (res[0] - res[1]) ** 2
+            scores.append(score)
             print(res)
 
-    # optimizing avg(depth_result)
-    target_value = mean(depths)
+    # optimizing avg((optimal_depth-depth_result)**2)
+    target_value = mean(scores)
 
     print("Target value is {}".format(target_value))
     print("______")
