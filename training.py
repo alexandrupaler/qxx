@@ -19,28 +19,27 @@ import random
 
 gdv_name = "TFL"
 depth_range = {
-    "TFL": [5 * x for x in range(1, 10)],
-    "QSE": [100 * x for x in range(1, 10)]
+    "TFL" : [5 * x for x in range(1, 10)],
+    "QSE" : [100 * x for x in range(1, 10)]
 }
 # gdv_name = "QSE"
 
 qubits = {
-    16: "Aspen-4",
-    20: "Tokyo",
-    53: "Rochester",
-    54: "Sycamore"
+    16 : "Aspen-4",
+    20 : "Tokyo",
+    53 : "Rochester",
+    54 : "Sycamore"
 }
 
 nr_qubits = 16
 
 first_run = True
 
-
 def convert_to_weighted_graph(multigraph):
     G = nx.Graph()
-    for u, v in multigraph.edges(data=False):
+    for u,v in multigraph.edges(data=False):
         w = 1
-        if G.has_edge(u, v):
+        if G.has_edge(u,v):
             G[u][v]['weight'] += w
         else:
             G.add_edge(u, v, weight=w)
@@ -81,7 +80,6 @@ def noOfTranspositions(P1, P, n):
 
     return transpositions
 
-
 def circuit_analysis(depth, trail):
     if gdv_name == "TFL":
         folder = "BNTF"
@@ -119,15 +117,16 @@ def circuit_analysis(depth, trail):
     # nx.draw_networkx(dag_circ._multi_graph, with_labels=False, node_size=10)
     # plt.show()
 
-    return max(nx.pagerank(weighted).values()), \
-           nx.number_connected_components(undirect), \
-           undirect.number_of_edges(), \
-           undirect.number_of_nodes(), \
+    return max(nx.pagerank(weighted).values()),\
+        nx.number_connected_components(undirect),\
+        undirect.number_of_edges(),\
+            undirect.number_of_nodes(), \
            nx.global_efficiency(weighted), \
            nx.s_metric(dag_circ._multi_graph, False)
 
 
 def benchmark(depth, trail, parameters):
+
     if gdv_name == "TFL":
         folder = "BNTF"
         depth_string = "{:02}".format(depth)
@@ -152,6 +151,7 @@ def benchmark(depth, trail, parameters):
     # print("qiskit", depth)
     # input qasm file as circuit
     test_circuit = qiskit.QuantumCircuit.from_qasm_file(qasm_file_name)
+
 
     """
         Construct the optimal initial mapping
@@ -182,6 +182,7 @@ def benchmark(depth, trail, parameters):
     # print(map_original_circuit.draw(style="text"))
     # construct passes that use the DenseLayout+StochasticSwap without initial mapping
 
+
     """
        K7M 
     """
@@ -196,6 +197,7 @@ def benchmark(depth, trail, parameters):
 
                   'seed': 19}  # pass the seed through gate costs
 
+
     # parameters_string = str(parameters)
 
     # the number of qubits in the device
@@ -204,7 +206,7 @@ def benchmark(depth, trail, parameters):
     parameters["gate_costs"] = gate_costs
     # Should the initial mapping be chosen random?
     parameters["initial_map"] = K7MInitialMapping.HEURISTIC
-    parameters["unidirectional_coupling"] = False
+    parameters["unidirectional_coupling"]=False
     parameters["dry_run"] = False
 
     k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
@@ -226,10 +228,10 @@ def benchmark(depth, trail, parameters):
     # accumulate result
     # print("----")
 
-    nr_t1 = noOfTranspositions(list(range(nr_qubits)), original_nodes, nr_qubits)
+    nr_t1 = noOfTranspositions( list(range(nr_qubits)), original_nodes, nr_qubits)
     nr_t2 = noOfTranspositions(original_nodes, init_map, nr_qubits)
 
-    #
+
     return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
 
 
@@ -265,12 +267,12 @@ def main():
         writer.writerow(header)
         print(*header)
 
-        for m_depth_p in range(1, nr_qubits + 2, 4):
-            for m_c_p in range(1, nr_qubits + 2, 4):
-                for b_p in range(-10, 11, 2):
-                    for c_p in range(-10, 11, 5):
-                        for div_p in range(2, 11, 4):
-                            for cx_p in range(2, 11, 4):
+    for m_depth_p in range(1, nr_qubits + 2, 4):
+        for m_c_p in range(1, nr_qubits + 2, 4):
+            for b_p in range(0, 21, 2):
+                for c_p in range(0, 21, 5):
+                    for div_p in range(2, 11, 4):
+                        for cx_p in range(2, 11, 4):
 
                                 for trail in range(10):
                                     for depth in depth_range[gdv_name]:
@@ -278,6 +280,8 @@ def main():
                                             "max_depth": m_depth_p,
                                             "max_children": m_c_p,
 
+                                        "att_b": b_p,
+                                        "att_c": c_p / 20,
                                             "att_b": b_p,
                                             "att_c": c_p / 10,
 
