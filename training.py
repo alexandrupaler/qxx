@@ -267,12 +267,12 @@ def main():
         writer.writerow(header)
         print(*header)
 
-    for m_depth_p in range(1, nr_qubits + 2, 4):
-        for m_c_p in range(1, nr_qubits + 2, 4):
-            for b_p in range(0, 21, 2):
-                for c_p in range(0, 21, 5):
-                    for div_p in range(2, 11, 4):
-                        for cx_p in range(2, 11, 4):
+        for m_depth_p in range(1, nr_qubits + 2, 4):
+            for m_c_p in range(1, nr_qubits + 2, 4):
+                for b_p in range(0, 21, 2):
+                    for c_p in range(0, 21, 5):
+                        for div_p in range(2, 11, 4):
+                            for cx_p in range(2, 11, 4):
 
                                 for trail in range(10):
                                     for depth in depth_range[gdv_name]:
@@ -280,10 +280,8 @@ def main():
                                             "max_depth": m_depth_p,
                                             "max_children": m_c_p,
 
-                                        "att_b": b_p,
-                                        "att_c": c_p / 20,
                                             "att_b": b_p,
-                                            "att_c": c_p / 10,
+                                            "att_c": c_p / 20,
 
                                             "div_dist": div_p / 10,
                                             "cx": cx_p,
