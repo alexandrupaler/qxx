@@ -15,6 +15,7 @@ import networkx as nx
 
 import getopt, sys
 from statistics import mean
+import random
 
 gdv_name = "TFL"
 depth_range = {
@@ -305,8 +306,9 @@ def main():
 
 # this is meant to be called from WRS
 def main_wrs(argumentList):
-    unixOptions = "w:d:b:c:e:m:"
-    gnuOptions = ["max_breadth=", "max_depth=", "attr_b=", "attr_c=", "edge_cost=", "movement_factor="]
+    unixOptions = "w:d:b:c:e:m:r:s:"
+    gnuOptions = ["max_breadth=", "max_depth=", "attr_b=", "attr_c=", "edge_cost=", "movement_factor=",
+                  "use_random_circuit=", "seed="]
 
     try:
         arguments, values = getopt.getopt(argumentList, unixOptions, gnuOptions)
@@ -316,6 +318,12 @@ def main_wrs(argumentList):
         sys.exit(2)
 
     argumentsDict = dict(arguments)
+
+    # if this is true, a single circuit randomly chosen will be used for evaluation
+    use_random_circuit = bool(getValue(argumentsDict, '-r', '--use_random_circuit', False))
+
+    # the random generator seed
+    seed = int(getValue(argumentsDict, '-s', '--seed', 1234567890))
 
     # 1 to 55 increment of 1
     max_breadth = int(getValue(argumentsDict, '-w', '--max_breadth', 1))
@@ -366,6 +374,20 @@ def main_wrs(argumentList):
     }
 
     scores = []
+
+    if use_random_circuit:
+        # maintain reproducibility
+        random.seed(seed)
+        trail = random.randint(0, 10)
+        depthindex = random.randint(0, len(depth_range[gdv_name]))
+        depth = depth_range[gdv_name][depthindex]
+        # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
+        res = benchmark(depth, trail, parameters)
+        # since we know optimal_depth and depth_result I guess it would make sense to optimize their square diff.
+        score = (res[0] - res[1]) ** 2
+        scores.append(score)
+        print(res)
+
     for trail in range(10):
         for depth in depth_range[gdv_name]:
             # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2

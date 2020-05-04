@@ -1,4 +1,4 @@
 #!/bin/bash
-cd /Users/acflorea/phd/k7m/
+cd $1
 source ./venv/bin/activate
-python3 $1
+python3 $2
