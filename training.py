@@ -263,8 +263,8 @@ with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFil
 
     for m_depth_p in range(1, nr_qubits + 2, 4):
         for m_c_p in range(1, nr_qubits + 2, 4):
-            for b_p in range(-10, 11, 2):
-                for c_p in range(-10, 11, 5):
+            for b_p in range(0, 21, 2):
+                for c_p in range(0, 21, 5):
                     for div_p in range(2, 11, 4):
                         for cx_p in range(2, 11, 4):
 
@@ -276,7 +276,7 @@ with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFil
                                         "max_children": m_c_p,
 
                                         "att_b": b_p,
-                                        "att_c": c_p / 10,
+                                        "att_c": c_p / 20,
 
                                         "div_dist": div_p / 10,
                                         "cx": cx_p,
