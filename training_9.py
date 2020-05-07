@@ -245,7 +245,7 @@ header = ["max_page_ranke", "nr_conn_comp", "edges", "nodes",
           "total_time", "init_time",
           "nr_t1", "nr_t2"]
 
-with open("_private_data/9_training_no_analysis.csv", "w",  buffering=1) as csvFile:
+with open("_private_data/9_training_no_analysis_t_10.csv", "w",  buffering=1) as csvFile:
     writer = csv.writer(csvFile)
     # writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
 
