@@ -2,6 +2,7 @@ import random
 
 import networkx as nx
 import math
+import time
 
 
 def get_distance_coupling(c1, c2, coupling_object):
@@ -283,6 +284,11 @@ def cuthill_order(dag_circuit, coupling_object, parameters):
         # print("limit", limit)
         # print("--------")
         for prev_leaf in all_leafs:
+
+            # Long computations should be interrupted
+            if time.time() - parameters["TIME_START"] > parameters["TIME_LIMIT"]:
+                return None
+
             # setup ordering based on parents of this node
             cuthill_set_partial_perm(circ_qub_idx, options_tree, curr_mapping, prev_leaf)
             # print(circ_qub_idx, curr_mapping)

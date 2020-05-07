@@ -211,6 +211,10 @@ def benchmark(depth, trail, parameters):
     map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)
     execution_time = time.time() - execution_time
 
+    if (map_test_circuit is None) and (init_map is None):
+        # this happens when the execution was interrupted
+        return optimal_depth, -1, execution_time, init_time, -1, -1
+
     # print(map_test_circuit.draw(output="text", fold=-1))
     # tmp_circuit = map_test_circuit.decompose()
     tmp_circuit = map_test_circuit
@@ -226,7 +230,6 @@ def benchmark(depth, trail, parameters):
 
     nr_t1 = noOfTranspositions( list(range(nr_qubits)), original_nodes, nr_qubits)
     nr_t2 = noOfTranspositions(original_nodes, init_map, nr_qubits)
-
 
     return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
 
@@ -277,6 +280,7 @@ with open("_private_data/9_training_no_analysis.csv", "w",  buffering=1) as csvF
                                         "option_skip_cx": False,
                                         "penalty_skip_cx": 20,
                                         "opt_div_by_act": False,
+                                        "TIME_LIMIT" : 10  # seconds
                                     }
 
                                     # analysis = circuit_analysis(depth, trail)

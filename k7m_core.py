@@ -41,6 +41,7 @@ class K7MCompiler(TransformationPass):
         dag_circuit = circuit_to_dag(quantum_circuit)
 
         init_time = time.time()
+        self.parameters["TIME_START"] = init_time
 
         initial_mapping = []
         if self.parameters["initial_map"] == K7MInitialMapping.RANDOM:
@@ -55,6 +56,9 @@ class K7MCompiler(TransformationPass):
 
         init_time = time.time() - init_time
 
+        if initial_mapping is None:
+            return None, init_time, None
+
         # print(initial_mapping)
         #
         # return quantum_circuit
@@ -67,7 +71,7 @@ class K7MCompiler(TransformationPass):
 
         original_pm.append([SetLayout(optimal_layout),
                             ApplyLayout(),
-                            StochasticSwap(self.coupling_obj.coupling),
+                            StochasticSwap(self.coupling_obj.coupling, seed=0),
                             Decompose(gate=qiskit.extensions.SwapGate)])
 
         return original_pm.run(quantum_circuit), init_time, initial_mapping
