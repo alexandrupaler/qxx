@@ -72,6 +72,7 @@ def main_wrs(argumentList):
         "option_skip_cx": False,
         "penalty_skip_cx": 20,
         "opt_div_by_act": False,
+        "TIME_LIMIT": 10  # seconds
     }
 
     scores = []
