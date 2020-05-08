@@ -255,7 +255,7 @@ with open("_private_data/13_training_no_analysis.csv", "w",  buffering=1) as csv
     print(*header)
 
     for m_depth_p in [13]:
-        for m_c_p in [1, 3, 5]:
+        for m_c_p in range(1, nr_qubits + 2, 4):
             for b_p in range(0, 21, 2):
                 for c_p in range(0, 21, 5):
                     for div_p in range(2, 11, 4):
