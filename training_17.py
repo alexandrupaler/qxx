@@ -211,6 +211,10 @@ def benchmark(depth, trail, parameters):
     map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)
     execution_time = time.time() - execution_time
 
+    if (map_test_circuit is None) and (init_map is None):
+        # this happens when the execution was interrupted
+        return optimal_depth, -1, execution_time, init_time, -1, -1
+
     # print(map_test_circuit.draw(output="text", fold=-1))
     # tmp_circuit = map_test_circuit.decompose()
     tmp_circuit = map_test_circuit
