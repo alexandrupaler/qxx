@@ -77,21 +77,17 @@ def main_wrs(argumentList):
 
     scores = []
 
-    if use_random_circuit:
-        # maintain reproducibility
-        random.seed(seed)
-        trail = random.randint(0, 10)
-        depthindex = random.randint(0, len(depth_range[gdv_name]))
-        depth = depth_range[gdv_name][depthindex]
-        # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
-        res = benchmark(depth, trail, parameters)
-        # since we know optimal_depth and depth_result I guess it would make sense to optimize their square diff.
-        score = (res[0] - res[1]) ** 2
-        scores.append(score)
-        print(res)
+    test = False
+    target_value = 0.0
 
-    for trail in range(10):
-        for depth in depth_range[gdv_name]:
+    if not test:
+
+        if use_random_circuit:
+            # maintain reproducibility
+            random.seed(seed)
+            trail = random.randint(0, 10)
+            depthindex = random.randint(0, len(depth_range[gdv_name]))
+            depth = depth_range[gdv_name][depthindex]
             # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
             res = benchmark(depth, trail, parameters)
             # since we know optimal_depth and depth_result I guess it would make sense to optimize their square diff.
@@ -99,8 +95,28 @@ def main_wrs(argumentList):
             scores.append(score)
             print(res)
 
-    # optimizing avg((optimal_depth-depth_result)**2)
-    target_value = mean(scores)
+        for trail in range(10):
+            for depth in depth_range[gdv_name]:
+                # return optimal_depth, depth_result, execution_time, init_time, nr_t1, nr_t2
+                res = benchmark(depth, trail, parameters)
+                # since we know optimal_depth and depth_result I guess it would make sense to optimize their square diff.
+                if res[1] == -1:
+                    # could not optimiza the circuit
+                    target_value = sys.maxsize
+                    print("Target value is {}".format(target_value))
+                    print("______")
+
+                    # This is to return the value to the caller
+                    sys.stdout.write(str(target_value))
+                    sys.stdout.flush()
+                    sys.exit(0)
+
+                score = (res[0] - res[1]) ** 2
+                scores.append(score)
+                print(res)
+
+        # optimizing avg((optimal_depth-depth_result)**2)
+        target_value = mean(scores)
 
     print("Target value is {}".format(target_value))
     print("______")
