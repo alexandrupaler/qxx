@@ -13,6 +13,8 @@ import time
 from qiskit.converters import circuit_to_dag
 import networkx as nx
 
+import sys
+
 gdv_name = "TFL"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
@@ -211,6 +213,10 @@ def benchmark(depth, trail, parameters):
     map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)
     execution_time = time.time() - execution_time
 
+    if (map_test_circuit is None) and (init_map is None):
+        # this happens when the execution was interrupted
+        return optimal_depth, -1, execution_time, init_time, -1, -1
+
     # print(map_test_circuit.draw(output="text", fold=-1))
     # tmp_circuit = map_test_circuit.decompose()
     tmp_circuit = map_test_circuit
@@ -242,61 +248,66 @@ header = ["max_page_ranke", "nr_conn_comp", "edges", "nodes",
           "total_time", "init_time",
           "nr_t1", "nr_t2"]
 
-with open("circuits_analysis.csv", "w",  buffering=1) as csvFile:
-    writer = csv.writer(csvFile)
-    writer.writerow(header)
-    print(*header)
+def main(argumentList):
 
-    for trail in range(10):
-        for depth in depth_range[gdv_name]:
-            analysis = (depth, trail) + circuit_analysis(depth, trail)
-            print(analysis)
-            writer.writerow(analysis)
-            csvFile.flush()
+    with open("circuits_analysis.csv", "w",  buffering=1) as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerow(header)
+        print(*header)
+
+        for trail in range(10):
+            for depth in depth_range[gdv_name]:
+                analysis = (depth, trail) + circuit_analysis(depth, trail)
+                print(analysis)
+                writer.writerow(analysis)
+                csvFile.flush()
 
 
-with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFile:
-    writer = csv.writer(csvFile)
+    with open("_private_data/training_no_analysis.csv", "w",  buffering=1) as csvFile:
+        writer = csv.writer(csvFile)
 
-    writer.writerow(header)
-    print(*header)
+        writer.writerow(header)
+        print(*header)
 
-    for m_depth_p in range(1, nr_qubits + 2, 4):
-        for m_c_p in range(1, nr_qubits + 2, 4):
-            for b_p in range(0, 21, 2):
-                for c_p in range(0, 21, 5):
-                    for div_p in range(2, 11, 4):
-                        for cx_p in range(2, 11, 4):
+        for m_depth_p in range(1, nr_qubits + 2, 4):
+            for m_c_p in range(1, nr_qubits + 2, 4):
+                for b_p in range(0, 21, 2):
+                    for c_p in range(0, 21, 5):
+                        for div_p in range(2, 11, 4):
+                            for cx_p in range(2, 11, 4):
 
-                            for trail in range(10):
-                                for depth in depth_range[gdv_name]:
+                                for trail in range(10):
+                                    for depth in depth_range[gdv_name]:
 
-                                    parameters = {
-                                        "max_depth": m_depth_p,
-                                        "max_children": m_c_p,
+                                        parameters = {
+                                            "max_depth": m_depth_p,
+                                            "max_children": m_c_p,
 
-                                        "att_b": b_p,
-                                        "att_c": c_p / 20,
+                                            "att_b": b_p,
+                                            "att_c": c_p / 20,
 
-                                        "div_dist": div_p / 10,
-                                        "cx": cx_p,
+                                            "div_dist": div_p / 10,
+                                            "cx": cx_p,
 
-                                        # UNUSED
-                                        "opt_att": True,
-                                        "opt_max_t_min": False,
-                                        "qubit_increase_factor": 3,
-                                        "option_skip_cx": False,
-                                        "penalty_skip_cx": 20,
-                                        "opt_div_by_act": False,
-                                    }
+                                            # UNUSED
+                                            "opt_att": True,
+                                            "opt_max_t_min": False,
+                                            "qubit_increase_factor": 3,
+                                            "option_skip_cx": False,
+                                            "penalty_skip_cx": 20,
+                                            "opt_div_by_act": False,
+                                        }
 
-                                    analysis = ("n/a", "|")
-                                    res =  benchmark(depth, trail, parameters)
-                                    params = ("|", m_depth_p, m_c_p, b_p, c_p, div_p, cx_p, depth, trail)
-                                    line = analysis + res + params
+                                        analysis = ("n/a", "|")
+                                        res =  benchmark(depth, trail, parameters)
+                                        params = ("|", m_depth_p, m_c_p, b_p, c_p, div_p, cx_p, depth, trail)
+                                        line = analysis + res + params
 
-                                    print(line)
-                                    writer.writerow(line)
+                                        print(line)
+                                        writer.writerow(line)
 
-                                    csvFile.flush()
+                                        csvFile.flush()
 
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
