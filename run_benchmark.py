@@ -168,38 +168,43 @@ def benchmark(depth, trail, varying_param):
 
                   'seed': 19}  # pass the seed through gate costs
 
+    """
+    20 secunde
+    4.093154 :: attr_b=5.00,attr_c=0.61,edge_cost=0.20,max_breadth=4,max_depth=9,movement_factor=2
+    
+    5 secunde
+    4.138454 :: attr_b=17.30,attr_c=0.25,edge_cost=0.20,max_breadth=3,max_depth=9,movement_factor=4
+    
+    0.5 secunde
+    4.322774 :: attr_b=8.00,attr_c=0.02,edge_cost=0.20,max_breadth=2,max_depth=9,movement_factor=2
+    
+    0.05 secunde
+    4.464655 :: attr_b=3.50,attr_c=0.31,edge_cost=0.90,max_breadth=2,max_depth=6,movement_factor=6
+    
+    # Lucian
+    2.424873 for [-w9 -d9 -b1.50 -c0.32 -e0.80 -m10]
+    """
+
     parameters = {
-        # maximum depth of the search tree
-        # after this depth, the leafs are evaluated
-        # and only the path with minimum cost is kept in the tree
-        # thus, the tree is pruned
-        "max_depth": test_circuit.n_qubits//2,
-        # "max_depth": test_circuit.n_qubits/4,
+        "att_b": 1.5,
+        "att_c": 0.32,
 
-        # maximum number of children of a node
-        # "max_children": qiskit_coupling_map.size(),
-        "max_children": 2,
+        "cx": 0.8,
 
-        # the first number_of_qubits * this factor the search maximises the cost
-        # afterwards it minimises it
+        "max_children": 9,
+        "max_depth": 9,
+
+        "div_dist": 10,
+
+        # UNUSED
+        "opt_att": True,
         "opt_max_t_min": False,
         "qubit_increase_factor": 3,
-
         "option_skip_cx": False,
         "penalty_skip_cx": 20,
+        "opt_div_by_act": False,
 
-        "opt_div_by_act" : False,
-
-        # later changes in the mapping should not affect
-        # the initial mapping of the circuit
-        "opt_att": True,
-        # b \in [0, 10]
-        "att_b" : -10,
-        # c \in [0, 1]
-        "att_c" : 1,
-
-        "div_dist" : 2,
-        "cx" : 0.01
+        "TIME_LIMIT": 100  # seconds
     }
 
     parameters_string = str(parameters)
@@ -216,16 +221,16 @@ def benchmark(depth, trail, varying_param):
     k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
 
     execution_time = time.time()
-    map_test_circuit, init_time = k7mcomp.run(test_circuit)
+    map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)
     execution_time = time.time() - execution_time
 
-    # print(map_test_circuit.draw(output="text", fold=-1))
-    # tmp_circuit = map_test_circuit.decompose()
-    tmp_circuit = map_test_circuit
-    # print(tmp_circuit.draw(output="text", fold=-1))
-    # tmp_circuit = qiskit_to_tk(map_test_circuit)
-    # Transform.RebaseToQiskit().DecomposeSWAPtoCX().apply(tmp_circuit)
-    depth_result = tmp_circuit.depth()
+    if (map_test_circuit is None) and (init_map is None):
+        # this happens when the execution was interrupted
+        # Will not write to file of results. So the averages are not affected
+        # by the interrupted experiments
+        return optimal_depth, -1, execution_time, init_time, -1, -1
+
+    depth_result = map_test_circuit.depth()
 
     print("k7m mapping: the circuit has", depth_result, "cycles")
     # print(map_test_circuit.draw(style="text"))
@@ -239,10 +244,9 @@ def benchmark(depth, trail, varying_param):
     first_run = False
 
     with open(
-            "_private_data/BNTF/_{}_{}_{}.csv".format(name_end,
-                                                     qubits[nr_qubits],
-                                                  parameters_string
-                                                     ),
+            "_private_data/BNTF/_{}_{}.csv".format(name_end,
+                                                   qubits[nr_qubits],
+                                                   ),
             file_op_type) as csvFile:
         writer = csv.writer(csvFile)
         writer.writerow([trail, "k7m", optimal_depth, depth_result, execution_time])
@@ -252,8 +256,9 @@ def benchmark(depth, trail, varying_param):
 
 for trail in range(10):
     for depth in depth_range[gdv_name]:
-        analysis = circuit_analysis(depth, trail, 0)
-        print(analysis)
+        # analysis = circuit_analysis(depth, trail, 0)
+        # print(analysis)
 
         # optimal_depth, depth_result = benchmark(depth, trail, 0)
+        benchmark(depth, trail, 0)
 

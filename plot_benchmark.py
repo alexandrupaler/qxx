@@ -12,6 +12,20 @@ gdv_name = "TFL"
 fig_large, ax_large = plt.subplots()
 large_i = 0
 
+# This is filled by the plot_experiment_results
+depth_ratio = {
+    "cirq": [0] * 9,
+    "qiskit": [0] * 9,
+    "tket": [0] * 9,
+    "jku": [0] * 9,
+    "k7m": [0] * 9
+}
+
+# The optimal depth is known
+optimal_depth = [5 * (i + 1) for i in range(9)]
+
+other_tools = ["cirq", "qiskit", "tket", "jku"]
+
 def plot_experiment_results(benchmark_name):
     global large_i
     large_i += 1
@@ -19,23 +33,12 @@ def plot_experiment_results(benchmark_name):
     print(large_i, benchmark_name)
     folder_name = os.path.dirname(benchmark_name)
 
+    global depth_ratio
+    global optimal_depth
 
     # for future qiskit experiment
     dataset = list()
 
-    depth_ratio = {
-        "cirq": [0] * 9,
-        "qiskit": [0] * 9,
-        "tket": [0] * 9,
-        "jku": [0] * 9,
-        "k7m": [0] * 9
-    }
-    optimal_depth = [0] * 9
-
-    """
-        Start plotting
-    """
-    fig, ax = plt.subplots()
 
     # with open("_private_data/BNTF/{}".format(benchmark_name), 'r') as csvfile:
     with open(benchmark_name, 'r') as csvfile:
@@ -54,7 +57,8 @@ def plot_experiment_results(benchmark_name):
     """
     Generate data for k7m
     """
-    # for tool in ["cirq", "qiskit", "tket", "jku", "k7m"]:
+    fig, ax = plt.subplots()
+
     for tool in ["k7m"]:
         for i in range(9):
             depth = 5 * (i + 1)
@@ -90,13 +94,28 @@ def plot_experiment_results(benchmark_name):
         csvfile.close()
 
     """
+        Plot the graph
+    """
+    for tool in other_tools + ["k7m"]:
+        ax.plot(optimal_depth, depth_ratio[tool], label=tool)
+
+    ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
+    if len(other_tools) > 0:
+        ax.legend()
+
+    # fig.savefig('_private_data/BNTF/{}.png'.format(gdv_name), dpi=300)
+    png_name = os.path.basename(benchmark_name)
+    folder_name = os.path.dirname(benchmark_name)
+    # fig.savefig('{}/{}{}.png'.format(folder_name,large_i,png_name), dpi=150)
+    fig.savefig('{}/{}.png'.format(folder_name, large_i), dpi=150)
+
+
+def load_others():
+    """
     Load other files
     """
+    global depth_ratio
 
-    # other_tools = ["cirq", "qiskit", "tket", "jku"]
-    other_tools = []
-
-    counts = [0] * 9
     for tool in other_tools:
         counts = [0] * 9
         with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'r') as csvfile:
@@ -108,38 +127,30 @@ def plot_experiment_results(benchmark_name):
         for i in range(9):
             depth_ratio[tool][i] /= counts[i]
 
+
+def plot_others():
     """
     Generate plots
     """
-
     for tool in other_tools + ["k7m"]:
-        ax.plot(optimal_depth, depth_ratio[tool], label=tool)
-
-        # if large_i == 4:
-        #     ax_large.plot(optimal_depth, depth_ratio[tool], "x", label=large_i)
-        # else:
         ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
-    ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-    # ax.set_ylim(0, 6)
 
-    if len(other_tools) > 0:
-        ax.legend()
+    """
+    This is the large plot
+    """
+    ax_large.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
+    # ax_large.set_ylim(22, 27)
+    ax_large.legend()
 
-    # fig.savefig('_private_data/BNTF/{}.png'.format(gdv_name), dpi=300)
-    png_name = os.path.basename(benchmark_name)
-    folder_name = os.path.dirname(benchmark_name)
-    # fig.savefig('{}/{}{}.png'.format(folder_name,large_i,png_name), dpi=150)
-    fig.savefig('{}/{}.png'.format(folder_name,large_i), dpi=150)
+    fig_large.savefig('compare_all.png', dpi=150)
+
 
 
 """
     MAIN
 """
-"""
-    Configure existing benchmark names
-"""
-# benchmark_name = "TFL_Aspen-4_{'max_depth': 16, 'max_children': 3, 'option_max_then_min': False, 'qubit_increase_factor': 3, 'option_skipped_cnots': False, 'penalty_skipped_cnot': 200, 'option_divide_by_activated': False, 'option_attenuate': False}"
+load_others()
 
 results_folder = "_private_data/BNTF/"
 for file in os.listdir(results_folder):
@@ -147,8 +158,5 @@ for file in os.listdir(results_folder):
         bench_name = os.path.join(results_folder, file)
         plot_experiment_results(bench_name)
 
-ax_large.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-# ax_large.set_ylim(22, 27)
-ax_large.legend()
 
-fig_large.savefig('compare_all.png', dpi=150)
+plot_others()

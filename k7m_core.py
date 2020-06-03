@@ -76,9 +76,9 @@ class K7MCompiler(TransformationPass):
 
         return original_pm.run(quantum_circuit), init_time, initial_mapping
 
-        """
-            NAIVE ROUTING
-        """
+        # """
+        #     NAIVE ROUTING
+        # """
         # if self.positions_obj == None:
         #     self.positions_obj = K7MPositions(dag_circuit,
         #                                       self.parameters,
@@ -87,7 +87,7 @@ class K7MCompiler(TransformationPass):
         #     Start with an initial configuration
         # '''
         # compiled_dag, back_stack = self.find_solution(dag_circuit, self.parameters["dry_run"])
-        # 
+        #
         # """
         #     Returning here stops backtracking -> A full backtrack is not available,
         #     but the following code, after having iterated through the possible
@@ -96,11 +96,11 @@ class K7MCompiler(TransformationPass):
         #     * computes for each configuration the cost
         #     * chooses the configuration of minimum cost
         # """
-        # 
+        #
         # # Clean the positions
         # self.positions_obj = None
-        # 
-        # return dag_to_circuit(compiled_dag)
+        #
+        # return dag_to_circuit(compiled_dag), init_time, initial_mapping
 
         """
             BACKTRACKING
