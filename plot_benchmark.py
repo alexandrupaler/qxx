@@ -51,7 +51,6 @@ def plot_experiment_results(benchmark_name):
                     data.append(row[i])
 
             dataset.append(data)
-    # csvfile.close()
 
 
     """
@@ -75,13 +74,6 @@ def plot_experiment_results(benchmark_name):
                     # csvfile.close()
             depth_ratio[tool][i] /= count_data
 
-
-
-        # for i in range(9):
-        #     depth = 5 * (i + 1)
-        #     with open("_private_data/BNTF/{}_{}.csv".format(gdv_name, tool), 'a') as csvfile:
-        #         csv.writer(csvfile).writerow([depth, depth_ratio[tool][i]])
-        #     csvfile.close()
         """
         Save AVG
         """
@@ -98,6 +90,9 @@ def plot_experiment_results(benchmark_name):
     """
     for tool in other_tools + ["k7m"]:
         ax.plot(optimal_depth, depth_ratio[tool], label=tool)
+
+    #Include this plot also on the large one
+    ax_large.plot(optimal_depth, depth_ratio["k7m"], label=large_i)
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
     if len(other_tools) > 0:
@@ -129,10 +124,7 @@ def load_others():
 
 
 def plot_others():
-    """
-    Generate plots
-    """
-    for tool in other_tools + ["k7m"]:
+    for tool in other_tools:
         ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
 
