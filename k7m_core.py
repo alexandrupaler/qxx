@@ -101,10 +101,10 @@ class K7MCompiler(TransformationPass):
         # self.positions_obj = None
         #
         # return dag_to_circuit(compiled_dag), init_time, initial_mapping
-
-        """
-            BACKTRACKING
-        """
+        #
+        # """
+        #     BACKTRACKING
+        # """
 
         # name = compiled_dag.name or None
         # circuit = qiskit.QuantumCircuit(*compiled_dag.qregs.values(), *compiled_dag.cregs.values(), name=name)

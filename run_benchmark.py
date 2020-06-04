@@ -13,7 +13,7 @@ import time
 from qiskit.converters import circuit_to_dag
 import networkx as nx
 
-gdv_name = "TFL"
+gdv_name = "QSE"
 depth_range = {
     "TFL" : [5 * x for x in range(1, 10)],
     "QSE" : [100 * x for x in range(1, 10)]
@@ -27,7 +27,7 @@ qubits = {
     54 : "Sycamore"
 }
 
-nr_qubits = 16
+nr_qubits = 54
 
 first_run = True
 
@@ -186,12 +186,12 @@ def benchmark(depth, trail, varying_param):
     """
 
     parameters = {
-        "att_b": 1.5,
-        "att_c": 0.32,
+        "att_b": 15,
+        "att_c": 0,
 
         "cx": 0.8,
 
-        "max_children": 9,
+        "max_children": 2,
         "max_depth": 9,
 
         "div_dist": 10,
@@ -204,7 +204,7 @@ def benchmark(depth, trail, varying_param):
         "penalty_skip_cx": 20,
         "opt_div_by_act": False,
 
-        "TIME_LIMIT": 100  # seconds
+        "TIME_LIMIT": 600  # seconds
     }
 
     parameters_string = str(parameters)

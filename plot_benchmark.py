@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-gdv_name = "TFL"
+gdv_name = "QSE"
 
 # Large compare plot
 fig_large, ax_large = plt.subplots()
@@ -22,7 +22,10 @@ depth_ratio = {
 }
 
 # The optimal depth is known
-optimal_depth = [5 * (i + 1) for i in range(9)]
+depth_range = {
+    "TFL" : [5 * x for x in range(1, 10)],
+    "QSE" : [100 * x for x in range(1, 10)]
+}
 
 other_tools = ["cirq", "qiskit", "tket", "jku"]
 
@@ -34,7 +37,7 @@ def plot_experiment_results(benchmark_name):
     folder_name = os.path.dirname(benchmark_name)
 
     global depth_ratio
-    global optimal_depth
+    global depth_range
 
     # for future qiskit experiment
     dataset = list()
@@ -60,8 +63,8 @@ def plot_experiment_results(benchmark_name):
 
     for tool in ["k7m"]:
         for i in range(9):
-            depth = 5 * (i + 1)
-            optimal_depth[i] = depth
+            depth = depth_range[gdv_name][i]
+            # optimal_depth[i] = depth
             count_data = 0
             for data in dataset:
                 if data[1] == tool and data[2] == depth:
@@ -81,7 +84,7 @@ def plot_experiment_results(benchmark_name):
         with open("{}/{}_{}.avg".format(folder_name,large_i ,tool), 'w') as csvfile:
             writer = csv.writer(csvfile)
             for i in range(9):
-                depth = 5 * (i + 1)
+                depth = depth_range[gdv_name][i]
                 writer.writerow([depth, depth_ratio[tool][i]])
         csvfile.close()
 
@@ -89,10 +92,10 @@ def plot_experiment_results(benchmark_name):
         Plot the graph
     """
     for tool in other_tools + ["k7m"]:
-        ax.plot(optimal_depth, depth_ratio[tool], label=tool)
+        ax.plot(depth_range[gdv_name], depth_ratio[tool], label=tool)
 
     #Include this plot also on the large one
-    ax_large.plot(optimal_depth, depth_ratio["k7m"], label=large_i)
+    ax_large.plot(depth_range[gdv_name], depth_ratio["k7m"], label=large_i)
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
     if len(other_tools) > 0:
@@ -124,15 +127,14 @@ def load_others():
 
 
 def plot_others():
-    for tool in other_tools:
-        ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
-
+    # for tool in other_tools:
+    #     ax_large.plot(optimal_depth, depth_ratio[tool], label=large_i)
 
     """
     This is the large plot
     """
     ax_large.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
-    # ax_large.set_ylim(22, 27)
+    # ax_large.set_ylim(3.5, 6)
     ax_large.legend()
 
     fig_large.savefig('compare_all.png', dpi=150)
@@ -142,11 +144,11 @@ def plot_others():
 """
     MAIN
 """
-load_others()
+# load_others()
 
 results_folder = "_private_data/BNTF/"
 for file in os.listdir(results_folder):
-    if file.startswith("_") and file.endswith(".csv"):
+    if file.startswith("_") and file.endswith(".csv") and (gdv_name in file):
         bench_name = os.path.join(results_folder, file)
         plot_experiment_results(bench_name)
 
