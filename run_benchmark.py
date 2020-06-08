@@ -13,9 +13,9 @@ import time
 from qiskit.converters import circuit_to_dag
 import networkx as nx
 
-gdv_name = "QSE"
+gdv_name = "TFL"
 depth_range = {
-    "TFL" : [5 * x for x in range(1, 10)],
+    "TFL" : [5 * x for x in range(1, 6)],
     "QSE" : [100 * x for x in range(1, 10)]
 }
 # gdv_name = "QSE"
@@ -27,7 +27,7 @@ qubits = {
     54 : "Sycamore"
 }
 
-nr_qubits = 54
+nr_qubits = 16
 
 first_run = True
 
@@ -169,6 +169,8 @@ def benchmark(depth, trail, varying_param):
                   'seed': 19}  # pass the seed through gate costs
 
     """
+    For TFL up to depth 45
+    
     20 secunde
     4.093154 :: attr_b=5.00,attr_c=0.61,edge_cost=0.20,max_breadth=4,max_depth=9,movement_factor=2
     
@@ -185,16 +187,35 @@ def benchmark(depth, trail, varying_param):
     2.424873 for [-w9 -d9 -b1.50 -c0.32 -e0.80 -m10]
     """
 
+    """
+    For TFL only up to depth 25 - NISQ scenario
+    1/100 seconds
+    
+    Timeout la 0005 (a terminat in 1h8m22)
+    Best 4.537083 - pentru  -w2 -d3 -b2.00 -c0.74 -e0.20 -m7
+    
+    Timeout la 0050 (a terminat in 1h48m17)
+    Best 4.278750 - pentru  -w2 -d9 -b6.10 -c0.65 -e 1.00 -m6
+    
+    Timeout la 0500 (a terminat in 2h15m10)
+    Best 3.965833 - pentru -w3 -d9 -b15.70 -c0.91 -e 0.20 -m10
+    
+    Timeout la 2000 (a terminat in 2h56m23)
+    Best 4.042917 - pentru -w4 -d8 -b6.90 -c0.86 -e 0.20 -m6
+    """
+
     parameters = {
-        "att_b": 15,
-        "att_c": 0,
+        "signature": "25_2000",
 
-        "cx": 0.8,
+        "att_b": 6.90,
+        "att_c": 0.86,
 
-        "max_children": 2,
-        "max_depth": 9,
+        "cx": 0.2,
 
-        "div_dist": 10,
+        "max_children": 4,
+        "max_depth": 8,
+
+        "div_dist": 6,
 
         # UNUSED
         "opt_att": True,
@@ -244,8 +265,9 @@ def benchmark(depth, trail, varying_param):
     first_run = False
 
     with open(
-            "_private_data/BNTF/_{}_{}.csv".format(name_end,
+            "_private_data/BNTF/_{}_{}_{}.csv".format(name_end,
                                                    qubits[nr_qubits],
+                                                    parameters["signature"]
                                                    ),
             file_op_type) as csvFile:
         writer = csv.writer(csvFile)

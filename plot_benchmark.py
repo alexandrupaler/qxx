@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-gdv_name = "QSE"
+gdv_name = "TFL"
 
 # Large compare plot
 fig_large, ax_large = plt.subplots()
@@ -42,7 +42,6 @@ def plot_experiment_results(benchmark_name):
     # for future qiskit experiment
     dataset = list()
 
-
     # with open("_private_data/BNTF/{}".format(benchmark_name), 'r') as csvfile:
     with open(benchmark_name, 'r') as csvfile:
         for row in csv.reader(csvfile, delimiter=','):
@@ -61,8 +60,11 @@ def plot_experiment_results(benchmark_name):
     """
     fig, ax = plt.subplots()
 
+    # Reset
+    depth_ratio["k7m"] = [0] * 9
+
     for tool in ["k7m"]:
-        for i in range(9):
+        for i in range(10):
             depth = depth_range[gdv_name][i]
             # optimal_depth[i] = depth
             count_data = 0
@@ -95,7 +97,10 @@ def plot_experiment_results(benchmark_name):
         ax.plot(depth_range[gdv_name], depth_ratio[tool], label=tool)
 
     #Include this plot also on the large one
-    ax_large.plot(depth_range[gdv_name], depth_ratio["k7m"], label=large_i)
+    legend = os.path.splitext(os.path.basename(benchmark_name))[0][1:]
+    ax_large.plot(depth_range[gdv_name], depth_ratio["k7m"],
+                  label=legend)
+                  # label=os.path.basename(benchmark_name))
 
     ax.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
     if len(other_tools) > 0:
@@ -133,6 +138,7 @@ def plot_others():
     """
     This is the large plot
     """
+    ax_large.grid(True)
     ax_large.set(xlabel='Optimal Depth', ylabel='Depth Ratio')
     # ax_large.set_ylim(3.5, 6)
     ax_large.legend()
@@ -145,12 +151,15 @@ def plot_others():
     MAIN
 """
 # load_others()
-
+files = []
 results_folder = "_private_data/BNTF/"
 for file in os.listdir(results_folder):
     if file.startswith("_") and file.endswith(".csv") and (gdv_name in file):
-        bench_name = os.path.join(results_folder, file)
-        plot_experiment_results(bench_name)
+        files.append(file)
+
+for file in sorted(files):
+    bench_name = os.path.join(results_folder, file)
+    plot_experiment_results(bench_name)
 
 
 plot_others()
