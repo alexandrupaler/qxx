@@ -17,8 +17,7 @@ The K7M algorithm was briefly explained and used for some results in
 [arxiv:1811.08985](https://arxiv.org/abs/1811.08985) 
  
 
-Please use the following citation, if this software in this repository 
-was useful to your research.
+Please use the following citation, if this software was useful to your research.
 
 ```
 @inproceedings{paler2019influence,
