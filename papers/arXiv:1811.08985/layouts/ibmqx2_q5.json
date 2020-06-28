@@ -1,0 +1,1 @@
+{"name": "ibmqx2_q5", "qubits": 5, "coupling_map": {"0": [1, 2], "1": [2], "3": [2, 4], "4": [2]}, "description": "IBM QX Sparrow: https://ibm.biz/qiskit-ibmqx2", "position": [[-1, 1], [1, 1], [0, 0], [1, -1], [-1, -1]]}

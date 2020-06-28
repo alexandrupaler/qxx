@@ -1,0 +1,1 @@
+{"name": "ibmqx4_q5", "qubits": 5, "coupling_map": {"1": [0], "2": [0, 1, 4], "3": [2, 4]}, "description": "IBM QX Raven: https://ibm.biz/qiskit-ibmqx4", "position": [[-1, 1], [1, 1], [0, 0], [1, -1], [-1, -1]]}

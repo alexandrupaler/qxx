@@ -1,8 +1,7 @@
-## K7M - a method to map circuits to NISQ
+## K7M - a method to map quantum circuits to NISQ
 
-K7M is a framework for investigating heuristics to map quantum circuits to NISQ.
-In its current implementation is was used to find a good initial mapping of
- qubits such that a low number of SWAPS is introduced.
+The current implementation can find a good initial mapping of
+ qubits such that a low number of additional gates (e.g. SWAP) is introduced.
  
 The general idea of K7M is that the initial placement of the qubits influences 
 to a great extent the total cost of  compiling a circuit for NISQ. Thus, it 
@@ -15,10 +14,11 @@ computational power to improve the cost of the placement heuristic.
 
 
 The K7M algorithm was briefly explained and used for some results in
- https://arxiv.org/abs/1811.08985
+[arxiv:1811.08985](https://arxiv.org/abs/1811.08985) 
+ 
 
-
-Please use the following citation, if this software in this repository was useful to your research.
+Please use the following citation, if this software in this repository 
+was useful to your research.
 
 ```
 @inproceedings{paler2019influence,
@@ -37,7 +37,8 @@ The algorithm is controlled by parameters which are specified in a dictionary.
 
 A simple usage example can be seen in [main.py](main.py).
 
-The results for benchmarking K7M with [arxiv:2002.09783](https://arxiv.org/pdf/2002.09783.pdf) 
+The results for benchmarking K7M with 
+[arxiv:2002.09783](https://arxiv.org/pdf/2002.09783.pdf) 
 are below.
 
 
