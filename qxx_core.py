@@ -11,25 +11,25 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.passes import StochasticSwap, SetLayout, ApplyLayout, \
     Decompose, BasicSwap
 
-from k7m_coupling import K7MCoupling
-from k7m_positions import K7MPositions
-from k7m_start_configuration import cuthill_order
-import k7m_gate_utils as gs
+from qxx_coupling import QXXCoupling
+from qxx_positions import QXXPositions
+from qxx_start_configuration import cuthill_order
+import qxx_gate_utils as gs
 
 
-class K7MInitialMapping(enum.Enum):
+class QXXInitialMapping(enum.Enum):
     RANDOM = enum.auto()
     LINEAR = enum.auto()
     HEURISTIC = enum.auto()
 
 
-class K7MCompiler(TransformationPass):
+class QXXCompiler(TransformationPass):
 
     def __init__(self, coupling_map, parameters):
 
         self.parameters = parameters
 
-        self.coupling_obj = K7MCoupling(coupling_map, parameters)
+        self.coupling_obj = QXXCoupling(coupling_map, parameters)
 
         self.positions_obj = None
 
@@ -44,14 +44,14 @@ class K7MCompiler(TransformationPass):
         self.parameters["TIME_START"] = init_time
 
         initial_mapping = []
-        if self.parameters["initial_map"] == K7MInitialMapping.RANDOM:
+        if self.parameters["initial_map"] == QXXInitialMapping.RANDOM:
             # Only the first positions which correspond to the circuit qubits
             initial_mapping = numpy.random.permutation(
                 self.parameters["nisq_qubits"])
             initial_mapping = initial_mapping[:dag_circuit.num_qubits()]
-        elif self.parameters["initial_map"] == K7MInitialMapping.LINEAR:
+        elif self.parameters["initial_map"] == QXXInitialMapping.LINEAR:
             initial_mapping = list(range(dag_circuit.num_qubits()))
-        elif self.parameters["initial_map"] == K7MInitialMapping.HEURISTIC:
+        elif self.parameters["initial_map"] == QXXInitialMapping.HEURISTIC:
             initial_mapping = cuthill_order(dag_circuit, self.coupling_obj, self.parameters)
 
         init_time = time.time() - init_time
@@ -80,7 +80,7 @@ class K7MCompiler(TransformationPass):
         #     NAIVE ROUTING
         # """
         # if self.positions_obj == None:
-        #     self.positions_obj = K7MPositions(dag_circuit,
+        #     self.positions_obj = QXXPositions(dag_circuit,
         #                                       self.parameters,
         #                                       initial_mapping)
         # '''

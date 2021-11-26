@@ -1,6 +1,6 @@
 import json
 from qiskit import QuantumCircuit
-from k7m_core import K7MCompiler, K7MInitialMapping
+from qxx_core import QXXCompiler, QXXInitialMapping
 
 def main():
 
@@ -76,11 +76,11 @@ def main():
     # Add the gate costs
     parameters["gate_costs"] = gate_costs
     # Should the initial mapping be chosen random?
-    parameters["initial_map"] = K7MInitialMapping.HEURISTIC
+    parameters["initial_map"] = QXXInitialMapping.HEURISTIC
     parameters["unidirectional_coupling"] = False
     parameters["dry_run"] = False
 
-    k7m = K7MCompiler(coupling, parameters)
+    k7m = QXXCompiler(coupling, parameters)
     result = k7m.run(circ)
 
     print(result.draw(output="text", fold=-1, idle_wires=False))

@@ -1,6 +1,6 @@
 # Import your solution function
-from k7m_core import k7m_compiler_function
-from k7m_core import compiler_function_nlayout
+from qxx_core import k7m_compiler_function
+from qxx_core import compiler_function_nlayout
 
 # Import submission evaluation and scoring functions
 from papers.exp_res.challenge_evaluation import score

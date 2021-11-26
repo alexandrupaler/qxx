@@ -3,7 +3,7 @@ import copy
 
 import qiskit
 
-class K7MPositions:
+class QXXPositions:
     def __init__(self, dag_circuit, parameters,initial_mapping):
         """
 

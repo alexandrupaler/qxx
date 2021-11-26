@@ -6,7 +6,7 @@ import csv
 from _private_benchmark.CONNECTION import INDEX_CONNECTION_LIST as connection_list
 from ast import literal_eval
 
-from k7m_core import K7MCompiler, K7MInitialMapping
+from qxx_core import QXXCompiler, QXXInitialMapping
 
 import time
 
@@ -201,11 +201,11 @@ def benchmark(depth, trail, parameters):
     # Add the gate costs
     parameters["gate_costs"] = gate_costs
     # Should the initial mapping be chosen random?
-    parameters["initial_map"] = K7MInitialMapping.HEURISTIC
+    parameters["initial_map"] = QXXInitialMapping.HEURISTIC
     parameters["unidirectional_coupling"]=False
     parameters["dry_run"] = False
 
-    k7mcomp = K7MCompiler(connection_list[qubits[nr_qubits]], parameters)
+    k7mcomp = QXXCompiler(connection_list[qubits[nr_qubits]], parameters)
 
     execution_time = time.time()
     map_test_circuit, init_time, init_map = k7mcomp.run(test_circuit)

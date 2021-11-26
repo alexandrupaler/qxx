@@ -13,7 +13,7 @@ import qiskit.qasm.node as node
 
 
 
-def k7m_online_cx_cancellation(dag_circuit, gate):
+def qxx_online_cx_cancellation(dag_circuit, gate):
     '''
     Cancel a CNOT in the circuit if the gate to add is a similar CNOT
     :param dag_circuit: the circuit
@@ -64,7 +64,7 @@ def k7m_online_cx_cancellation(dag_circuit, gate):
 def append_ops_to_dag(dag_circuit, op_list):
 
     for op in op_list:
-        if k7m_online_cx_cancellation(dag_circuit, op):
+        if qxx_online_cx_cancellation(dag_circuit, op):
             # if paler_simplify_1q(dag_circuit, op):
             # Use  Optimize1qGates and CXCancellation from the new qiskit
             # TODO: FIX IT!!!
