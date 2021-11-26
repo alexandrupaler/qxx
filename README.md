@@ -1,8 +1,4 @@
 This repo contains the code and results of QXX and QXX-MLP.
-Some concepts used by QXX were initially presented in 
-[arxiv:1811.08985](https://arxiv.org/abs/1811.08985)
-
-The QXX-MLP method is described in 
 ```
 @article{paler2020machine,
   title={Machine learning optimization of quantum circuit layouts},
@@ -16,6 +12,7 @@ A simple usage example can be seen in [main.py](main.py).
 The results for benchmarking QXX with 
 [arxiv:2002.09783](https://arxiv.org/pdf/2002.09783.pdf) 
 are below.
+
 <img alt="benchmark" src="TFL.png" width="400"/>
 
 
@@ -29,7 +26,7 @@ fully mapped circuit;
 computational power to improve the cost of the placement heuristic.
 
 
-The K7M heuristic can be cited using
+Some concepts used by QXX were presented in a paper about the K7M heuristic
 ```
 @inproceedings{paler2019influence,
   title={On the influence of initial qubit placement during NISQ circuit compilation},
@@ -40,7 +37,7 @@ The K7M heuristic can be cited using
   organization={Springer}
 }
 ```
-PS: QXX has this name for no particular reason.
 
+PS: QXX has this name for no particular reason.
 PS: The name of the K7M heuristic is borrowed from the 
 [Renault engine](https://en.wikipedia.org/wiki/Renault_K-Type_engine).
